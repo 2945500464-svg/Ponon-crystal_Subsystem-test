@@ -4,3 +4,4 @@ pandas
 matplotlib
 openpyxl
 h5py
+customtkinter

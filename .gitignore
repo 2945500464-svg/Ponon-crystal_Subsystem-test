@@ -1,24 +1,30 @@
-# Raw MATLAB test data
-*.mat
-*.h5
-*.hdf5
+# Raw test data and local data format sheets
+Raw_data/**/*.mat
+Raw_data/**/*.h5
+Raw_data/**/*.hdf5
+Raw_data/**/*.xlsx
+Raw_data/**/*.xls
+!Raw_data/.gitkeep
+!Raw_data/README.md
 
-# Generated outputs
-results/**/*.png
-results/**/*.jpg
-results/**/*.jpeg
-results/**/*.pdf
-results/**/*.xlsx
-results/**/*.csv
+# Generated output
+output/**/*
+!output/.gitkeep
+!output/figures/
+!output/figures/.gitkeep
+!output/xlsx/
+!output/xlsx/.gitkeep
+
+# Legacy or ad-hoc generated result folders
 5.*出图/
 结合图/
-归一化指标_70-140Hz出图/
+归一化指标_*/
+results/
 
-# Reports, slides and local temporary files
+# Reports, slides, temporary render artifacts
 *.pptx
 *.docx
 *.pdf
-output/
 temp/
 report_assets/
 report_render_check*/
@@ -28,7 +34,12 @@ ppt_slide*_extract/
 # Python cache and local environments
 __pycache__/
 *.py[cod]
+.pytest_cache/
 .venv/
 venv/
 .idea/
 .vscode/
+
+# OS files
+Thumbs.db
+.DS_Store
