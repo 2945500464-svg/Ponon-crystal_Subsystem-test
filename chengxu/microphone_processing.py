@@ -23,7 +23,7 @@ THIRD_OCTAVE_NOMINAL_CENTERS = np.array(
     [10, 12.5, 16, 20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000],
     dtype=float,
 )
-FRACTIONAL_OCTAVE_DENOMINATORS = [3, 6, 10]
+FRACTIONAL_OCTAVE_DENOMINATORS = [3, 4, 6, 10, 20]
 
 
 def _safe_db_from_pressure_power(pressure_power: np.ndarray) -> np.ndarray:
@@ -67,10 +67,14 @@ def _octave_label(octave_denominator: int) -> str:
     denominator = int(octave_denominator)
     if denominator == 3:
         return "三分之一倍频程"
+    if denominator == 4:
+        return "四分之一倍频程"
     if denominator == 6:
         return "六分之一倍频程"
     if denominator == 10:
         return "十分之一倍频程"
+    if denominator == 20:
+        return "二十分之一倍频程"
     return f"1/{denominator} 倍频程"
 
 
@@ -334,7 +338,7 @@ def plot_microphone_fft_spl(
     ax.set_xlim(freq_min, freq_max)
     ax.set_xlabel("频率 / Hz")
     ax.set_ylabel("声压级 / dB SPL")
-    ax.set_title(f"{mic_name} 70-140 Hz FFT声压级")
+    ax.set_title(f"{mic_name} {freq_min:.0f}-{freq_max:.0f} Hz FFT声压级")
     ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.35)
     ax.legend(loc="best", frameon=True)
     fig.tight_layout()

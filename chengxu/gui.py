@@ -118,6 +118,8 @@ def launch_analysis_gui() -> None:
     }
     mic_average_prefix_var = ctk.BooleanVar(value=False)
     mic_octave_fraction_var = ctk.StringVar(value="1/3 倍频程")
+    mic_freq_min_var = ctk.StringVar(value=str(MICROPHONE_FREQ_MIN))
+    mic_freq_max_var = ctk.StringVar(value=str(MICROPHONE_FREQ_MAX))
     font_family_var = ctk.StringVar(value="Microsoft YaHei UI")
     title_fontsize_var = ctk.StringVar(value="14")
     label_fontsize_var = ctk.StringVar(value="12")
@@ -383,16 +385,51 @@ def launch_analysis_gui() -> None:
         text=(
             "独立处理 Raw_data/5.31 下的三行麦克风数据："
             "Data第1行为主驾驶，Data第2行为中排，Data第3行为后排。"
-            "单位按 Pa 处理，参考声压 p0=20 μPa，固定分析 70-140 Hz。"
+            "单位按 Pa 处理，参考声压 p0=20 μPa，频率范围可在下方调整。"
         ),
         text_color=text_muted,
         wraplength=620,
         justify="left",
     ).grid(row=1, column=0, columnspan=2, sticky="w", padx=18, pady=(8, 12))
 
+    ctk.CTkLabel(
+        tab_microphone,
+        text="麦克风频率范围 / Hz",
+        font=("Microsoft YaHei UI", 15, "bold"),
+        text_color=accent,
+    ).grid(row=2, column=0, columnspan=2, sticky="w", padx=18, pady=(10, 8))
+    mic_freq_frame = ctk.CTkFrame(tab_microphone, fg_color="transparent")
+    mic_freq_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=18, pady=(0, 8))
+    mic_freq_frame.grid_columnconfigure((1, 3), weight=1)
+    ctk.CTkLabel(mic_freq_frame, text="下限", text_color=text_main).grid(row=0, column=0, sticky="w", padx=(0, 8))
+    ctk.CTkEntry(
+        mic_freq_frame,
+        textvariable=mic_freq_min_var,
+        fg_color=card,
+        border_color=border,
+        text_color=text_main,
+        width=100,
+    ).grid(row=0, column=1, sticky="ew", padx=(0, 14))
+    ctk.CTkLabel(mic_freq_frame, text="上限", text_color=text_main).grid(row=0, column=2, sticky="w", padx=(0, 8))
+    ctk.CTkEntry(
+        mic_freq_frame,
+        textvariable=mic_freq_max_var,
+        fg_color=card,
+        border_color=border,
+        text_color=text_main,
+        width=100,
+    ).grid(row=0, column=3, sticky="ew")
+    ctk.CTkLabel(
+        tab_microphone,
+        text="该范围同时用于 FFT声压级显示、总声压级积分和分数倍频程频带筛选。",
+        text_color=text_muted,
+        wraplength=620,
+        justify="left",
+    ).grid(row=4, column=0, columnspan=2, sticky="w", padx=18, pady=(0, 10))
+
     mic_items = [
-        ("70-140 Hz FFT声压级图", "fft_spl"),
-        ("70-140 Hz 总声压级图", "total_spl"),
+        ("FFT声压级图", "fft_spl"),
+        ("总声压级图", "total_spl"),
         ("分数倍频程声压级图", "third_octave"),
     ]
     for idx, (text, key) in enumerate(mic_items):
@@ -405,7 +442,7 @@ def launch_analysis_gui() -> None:
             fg_color=accent,
             hover_color=accent_hover,
             text_color=text_main,
-        ).grid(row=2 + idx, column=0, columnspan=2, sticky="w", padx=18, pady=10)
+        ).grid(row=5 + idx, column=0, columnspan=2, sticky="w", padx=18, pady=10)
 
     ctk.CTkCheckBox(
         tab_microphone,
@@ -416,18 +453,18 @@ def launch_analysis_gui() -> None:
         fg_color=accent,
         hover_color=accent_hover,
         text_color=text_main,
-    ).grid(row=5, column=0, columnspan=2, sticky="w", padx=18, pady=(12, 8))
+    ).grid(row=8, column=0, columnspan=2, sticky="w", padx=18, pady=(12, 8))
 
     ctk.CTkLabel(
         tab_microphone,
         text="倍频程类型",
         font=("Microsoft YaHei UI", 15, "bold"),
         text_color=accent,
-    ).grid(row=6, column=0, sticky="w", padx=18, pady=(18, 8))
+    ).grid(row=9, column=0, sticky="w", padx=18, pady=(18, 8))
     ctk.CTkOptionMenu(
         tab_microphone,
         variable=mic_octave_fraction_var,
-        values=["1/3 倍频程", "1/6 倍频程", "1/10 倍频程"],
+        values=["1/3 倍频程", "1/4 倍频程", "1/6 倍频程", "1/10 倍频程", "1/20 倍频程"],
         fg_color=card,
         button_color=accent,
         button_hover_color=accent_hover,
@@ -435,14 +472,14 @@ def launch_analysis_gui() -> None:
         dropdown_fg_color=panel_alt,
         dropdown_hover_color=soft_blue,
         dropdown_text_color=text_main,
-    ).grid(row=6, column=1, sticky="ew", padx=18, pady=(18, 8))
+    ).grid(row=9, column=1, sticky="ew", padx=18, pady=(18, 8))
 
     ctk.CTkLabel(
         tab_microphone,
         text="选择麦克风位置",
         font=("Microsoft YaHei UI", 15, "bold"),
         text_color=accent,
-    ).grid(row=7, column=0, columnspan=2, sticky="w", padx=18, pady=(18, 8))
+    ).grid(row=10, column=0, columnspan=2, sticky="w", padx=18, pady=(18, 8))
     for idx, text in enumerate(["主驾驶麦克风", "中排麦克风", "后排麦克风"]):
         ctk.CTkCheckBox(
             tab_microphone,
@@ -453,7 +490,7 @@ def launch_analysis_gui() -> None:
             fg_color=accent,
             hover_color=accent_hover,
             text_color=text_main,
-        ).grid(row=8 + idx, column=0, columnspan=2, sticky="w", padx=18, pady=8)
+        ).grid(row=11 + idx, column=0, columnspan=2, sticky="w", padx=18, pady=8)
 
     ctk.CTkButton(
         tab_microphone,
@@ -462,7 +499,7 @@ def launch_analysis_gui() -> None:
         fg_color=panel_alt,
         hover_color=soft_blue,
         text_color=text_main,
-    ).grid(row=11, column=0, sticky="ew", padx=18, pady=(18, 8))
+    ).grid(row=14, column=0, sticky="ew", padx=18, pady=(18, 8))
     ctk.CTkButton(
         tab_microphone,
         text="取消麦克风图",
@@ -470,7 +507,7 @@ def launch_analysis_gui() -> None:
         fg_color=panel_alt,
         hover_color=soft_blue,
         text_color=text_main,
-    ).grid(row=11, column=1, sticky="ew", padx=18, pady=(18, 8))
+    ).grid(row=14, column=1, sticky="ew", padx=18, pady=(18, 8))
     ctk.CTkButton(
         tab_microphone,
         text="全选麦克风位置",
@@ -478,7 +515,7 @@ def launch_analysis_gui() -> None:
         fg_color=panel_alt,
         hover_color=soft_blue,
         text_color=text_main,
-    ).grid(row=12, column=0, sticky="ew", padx=18, pady=(0, 8))
+    ).grid(row=15, column=0, sticky="ew", padx=18, pady=(0, 8))
     ctk.CTkButton(
         tab_microphone,
         text="取消麦克风位置",
@@ -486,7 +523,7 @@ def launch_analysis_gui() -> None:
         fg_color=panel_alt,
         hover_color=soft_blue,
         text_color=text_main,
-    ).grid(row=12, column=1, sticky="ew", padx=18, pady=(0, 8))
+    ).grid(row=15, column=1, sticky="ew", padx=18, pady=(0, 8))
     ctk.CTkButton(
         tab_microphone,
         text="推荐组合：三类图 + 三个麦克风位置",
@@ -494,7 +531,7 @@ def launch_analysis_gui() -> None:
         fg_color=panel_alt,
         hover_color=soft_blue,
         text_color=text_main,
-    ).grid(row=13, column=0, columnspan=2, sticky="ew", padx=18, pady=(8, 8))
+    ).grid(row=16, column=0, columnspan=2, sticky="ew", padx=18, pady=(8, 8))
     ctk.CTkButton(
         tab_microphone,
         text="开始处理麦克风数据",
@@ -504,14 +541,14 @@ def launch_analysis_gui() -> None:
         text_color="#ffffff",
         font=("Microsoft YaHei UI", 15, "bold"),
         height=44,
-    ).grid(row=14, column=0, columnspan=2, sticky="ew", padx=18, pady=(12, 8))
+    ).grid(row=17, column=0, columnspan=2, sticky="ew", padx=18, pady=(12, 8))
     ctk.CTkLabel(
         tab_microphone,
         text="保存、显示、DPI、图片格式和曲线样式沿用“保存与统计”“图形样式”页面的当前设置。",
         text_color=text_muted,
         wraplength=620,
         justify="left",
-    ).grid(row=15, column=0, columnspan=2, sticky="w", padx=18, pady=(8, 12))
+    ).grid(row=18, column=0, columnspan=2, sticky="w", padx=18, pady=(8, 12))
 
     def add_labeled_entry(parent: Any, row: int, col: int, label: str, variable: Any) -> None:
         ctk.CTkLabel(parent, text=label, text_color=label_text).grid(row=row, column=col, sticky="w", padx=18, pady=(12, 4))
@@ -811,19 +848,39 @@ def launch_analysis_gui() -> None:
 
     def get_microphone_octave_denominator() -> int:
         text = str(mic_octave_fraction_var.get() or "1/3")
+        if "1/20" in text or "二十分之一" in text:
+            return 20
         if "1/10" in text or "十分之一" in text:
             return 10
+        if "1/4" in text or "四分之一" in text:
+            return 4
         if "1/6" in text or "六分之一" in text:
             return 6
         return 3
 
     def get_microphone_octave_label() -> str:
         denominator = get_microphone_octave_denominator()
+        if denominator == 20:
+            return "二十分之一倍频程声压级"
         if denominator == 10:
             return "十分之一倍频程声压级"
         if denominator == 6:
             return "六分之一倍频程声压级"
+        if denominator == 4:
+            return "四分之一倍频程声压级"
         return "三分之一倍频程声压级"
+
+    def get_microphone_frequency_range() -> tuple[float, float]:
+        try:
+            freq_min_value = float(mic_freq_min_var.get())
+            freq_max_value = float(mic_freq_max_var.get())
+        except ValueError as exc:
+            raise ValueError("麦克风频率上下限必须填写为数字。") from exc
+        if freq_min_value < 0:
+            raise ValueError("麦克风频率下限不能小于 0 Hz。")
+        if freq_max_value <= freq_min_value:
+            raise ValueError("麦克风频率上限必须大于下限。")
+        return freq_min_value, freq_max_value
 
     def selected_plot_type_names() -> List[str]:
         return [text for text, key in plot_items if key in plot_vars and bool(plot_vars[key].get())]
@@ -850,8 +907,9 @@ def launch_analysis_gui() -> None:
             plot_desc = "、".join(selected_microphone_plot_type_names()) or "未选麦克风图"
             mic_desc = "、".join(selected_microphone_position_names()) or "未选麦克风位置"
             avg_desc = "；按同名前缀平均" if bool(mic_average_prefix_var.get()) else ""
+            mic_freq_desc = f"{mic_freq_min_var.get()}-{mic_freq_max_var.get()} Hz"
             task_summary_var.set(
-                f"当前任务：{workflow} | 文件夹：{selected_folder} | 已选 {selected_count} 个 | 图：{plot_desc} | 位置：{mic_desc}{avg_desc} | {save_state} | 输出：{save_dir_var.get()}"
+                f"当前任务：{workflow} | 文件夹：{selected_folder} | 已选 {selected_count} 个 | 图：{plot_desc} | 位置：{mic_desc}{avg_desc} | 频段：{mic_freq_desc} | {save_state} | 输出：{save_dir_var.get()}"
             )
         else:
             plot_desc = "、".join(selected_plot_type_names()) or "未选结构振动图"
@@ -1407,6 +1465,7 @@ def launch_analysis_gui() -> None:
                 messagebox.showwarning("提示", "请至少选择一个麦克风位置。")
                 return
 
+            mic_freq_min_value, mic_freq_max_value = get_microphone_frequency_range()
             dpi_value = int(float(dpi_var.get()))
             if dpi_value <= 0:
                 raise ValueError("DPI 必须大于 0。")
@@ -1417,8 +1476,8 @@ def launch_analysis_gui() -> None:
             require_runtime_dependencies()
             microphone_results = analyze_microphone_files(
                 mat_files=get_ordered_selected_files(),
-                freq_min=MICROPHONE_FREQ_MIN,
-                freq_max=MICROPHONE_FREQ_MAX,
+                freq_min=mic_freq_min_value,
+                freq_max=mic_freq_max_value,
                 average_by_prefix=bool(mic_average_prefix_var.get()),
                 octave_denominator=get_microphone_octave_denominator(),
             )
@@ -1436,8 +1495,8 @@ def launch_analysis_gui() -> None:
                 show_after=show_var.get(),
                 save_figures_flag=save_figures_var.get(),
                 plot_style=build_gui_plot_style(bool(mic_average_prefix_var.get())),
-                freq_min=MICROPHONE_FREQ_MIN,
-                freq_max=MICROPHONE_FREQ_MAX,
+                freq_min=mic_freq_min_value,
+                freq_max=mic_freq_max_value,
                 mic_indices=selected_mic_indices,
                 octave_denominator=get_microphone_octave_denominator(),
             )
@@ -1481,7 +1540,7 @@ def launch_analysis_gui() -> None:
     workflow_var.trace_add("write", lambda *_: update_task_summary())
     for traced_var in list(plot_vars.values()) + list(mic_plot_vars.values()) + list(mic_position_vars.values()):
         traced_var.trace_add("write", lambda *_: update_task_summary())
-    for traced_var in [save_figures_var, export_excel_var, show_var, fmin_var, fmax_var, input_mode_var, format_var, dpi_var, save_dir_var, mic_octave_fraction_var]:
+    for traced_var in [save_figures_var, export_excel_var, show_var, fmin_var, fmax_var, input_mode_var, format_var, dpi_var, save_dir_var, mic_octave_fraction_var, mic_freq_min_var, mic_freq_max_var]:
         traced_var.trace_add("write", lambda *_: update_task_summary())
 
     folders = list_data_folders()
