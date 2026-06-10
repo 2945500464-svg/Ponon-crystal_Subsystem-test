@@ -316,6 +316,23 @@ def apply_plot_style(fig: plt.Figure, plot_style: Optional[Dict[str, Any]]) -> N
         for tick_label in list(ax.get_xticklabels()) + list(ax.get_yticklabels()):
             tick_label.set_fontfamily(style["font_family"])
 
+        x_tick_labels = ax.get_xticklabels()
+        mapped_tick_texts: List[str] = []
+        has_mapped_tick = False
+        for tick_label in x_tick_labels:
+            original_text = tick_label.get_text()
+            mapped_text = _lookup_style_display_name(original_text, display_name_map)
+            if mapped_text:
+                mapped_tick_texts.append(mapped_text)
+                has_mapped_tick = True
+            else:
+                mapped_tick_texts.append(original_text)
+        if has_mapped_tick and len(mapped_tick_texts) == len(ax.get_xticks()):
+            rotation = x_tick_labels[0].get_rotation() if x_tick_labels else 0
+            ha = x_tick_labels[0].get_ha() if x_tick_labels else "center"
+            ax.set_xticks(ax.get_xticks())
+            ax.set_xticklabels(mapped_tick_texts, rotation=rotation, ha=ha, fontfamily=style["font_family"], fontsize=style["tick_fontsize"])
+
         for line in ax.get_lines():
             label = line.get_label()
             mapped_color = _lookup_style_color(label, color_map)

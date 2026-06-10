@@ -19,11 +19,12 @@ MICROPHONE_NAMES = ["主驾驶麦克风", "中排麦克风", "后排麦克风"]
 MICROPHONE_REFERENCE_PA = 20e-6
 MICROPHONE_FREQ_MIN = 70.0
 MICROPHONE_FREQ_MAX = 140.0
+MICROPHONE_FFT_RESOLUTION_HZ = 1.0
 THIRD_OCTAVE_NOMINAL_CENTERS = np.array(
     [10, 12.5, 16, 20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000],
     dtype=float,
 )
-FRACTIONAL_OCTAVE_DENOMINATORS = [3, 4, 6, 10, 20]
+FRACTIONAL_OCTAVE_DENOMINATORS = [3, 6, 12, 24]
 
 
 def _safe_db_from_pressure_power(pressure_power: np.ndarray) -> np.ndarray:
@@ -67,14 +68,12 @@ def _octave_label(octave_denominator: int) -> str:
     denominator = int(octave_denominator)
     if denominator == 3:
         return "三分之一倍频程"
-    if denominator == 4:
-        return "四分之一倍频程"
     if denominator == 6:
         return "六分之一倍频程"
-    if denominator == 10:
-        return "十分之一倍频程"
-    if denominator == 20:
-        return "二十分之一倍频程"
+    if denominator == 12:
+        return "十二分之一倍频程"
+    if denominator == 24:
+        return "二十四分之一倍频程"
     return f"1/{denominator} 倍频程"
 
 
@@ -107,6 +106,48 @@ def _fractional_octave_bands(freq_min: float, freq_max: float, octave_denominato
         if upper >= freq_min and lower <= freq_max:
             bands.append((float(center), float(lower), float(upper)))
     return bands
+
+
+def _frequency_band_spl(
+    freqs: np.ndarray,
+    psd: np.ndarray,
+    freq_min: float,
+    freq_max: float,
+    band_width_hz: float = MICROPHONE_FFT_RESOLUTION_HZ,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """将 PSD 按固定频宽积分为声压级；用于 1 Hz 分辨率 FFT 声压级图。"""
+    if freqs.size < 2:
+        raise ValueError("频率轴点数不足")
+    if band_width_hz <= 0:
+        raise ValueError("FFT 声压级频率分辨率必须大于 0")
+
+    df = float(freqs[1] - freqs[0])
+    start_center = int(np.ceil(freq_min))
+    end_center = int(np.floor(freq_max))
+    if start_center <= end_center:
+        centers = np.arange(start_center, end_center + 1, dtype=float)
+        edges = [(center - band_width_hz / 2.0, center + band_width_hz / 2.0) for center in centers]
+    else:
+        centers = np.asarray([(freq_min + freq_max) / 2.0], dtype=float)
+        edges = [(freq_min, freq_max)]
+
+    spl_rows: List[np.ndarray] = []
+    valid_centers: List[float] = []
+    for center, (lower, upper) in zip(centers, edges):
+        lower = max(float(lower), float(freq_min))
+        upper = min(float(upper), float(freq_max))
+        if center == centers[-1]:
+            mask = (freqs >= lower) & (freqs <= upper)
+        else:
+            mask = (freqs >= lower) & (freqs < upper)
+        if not np.any(mask):
+            continue
+        spl_rows.append(_safe_db_from_pressure_power(np.sum(psd[:, mask] * df, axis=1)))
+        valid_centers.append(float(center))
+
+    if not spl_rows:
+        return np.asarray([], dtype=float), np.empty((psd.shape[0], 0))
+    return np.asarray(valid_centers, dtype=float), np.vstack(spl_rows).T
 
 
 def _compute_microphone_result_for_file(
@@ -319,13 +360,18 @@ def plot_microphone_fft_spl(
     for condition_name in _resolve_microphone_condition_order(results, condition_order):
         result = results[condition_name]
         freqs = result["freqs"]
-        spl = result["fft_spl"][mic_index, :]
-        mask = (freqs >= freq_min) & (freqs <= freq_max)
-        if not np.any(mask):
+        centers, spl = _frequency_band_spl(
+            freqs=freqs,
+            psd=result["psd"],
+            freq_min=freq_min,
+            freq_max=freq_max,
+            band_width_hz=MICROPHONE_FFT_RESOLUTION_HZ,
+        )
+        if centers.size == 0 or spl.shape[1] == 0:
             continue
         ax.plot(
-            freqs[mask],
-            spl[mask],
+            centers,
+            spl[mic_index, :],
             linewidth=1.4,
             label=get_display_condition_name(condition_name),
             color=get_condition_color(condition_name),
@@ -337,8 +383,8 @@ def plot_microphone_fft_spl(
         return None
     ax.set_xlim(freq_min, freq_max)
     ax.set_xlabel("频率 / Hz")
-    ax.set_ylabel("声压级 / dB SPL")
-    ax.set_title(f"{mic_name} {freq_min:.0f}-{freq_max:.0f} Hz FFT声压级")
+    ax.set_ylabel("1 Hz 频带声压级 / dB SPL")
+    ax.set_title(f"{mic_name} {freq_min:.0f}-{freq_max:.0f} Hz FFT声压级（1 Hz分辨率）")
     ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.35)
     ax.legend(loc="best", frameon=True)
     fig.tight_layout()
@@ -429,6 +475,8 @@ def save_microphone_outputs(
     plot_style: Optional[Dict[str, Any]] = None,
     freq_min: float = MICROPHONE_FREQ_MIN,
     freq_max: float = MICROPHONE_FREQ_MAX,
+    fft_freq_min: Optional[float] = None,
+    fft_freq_max: Optional[float] = None,
     mic_indices: Optional[List[int]] = None,
     octave_denominator: int = 3,
 ) -> List[Path]:
@@ -457,12 +505,14 @@ def save_microphone_outputs(
         for option_key, filename_part, plotter in plotters:
             if not plot_options.get(option_key):
                 continue
+            plot_freq_min = fft_freq_min if option_key == "fft_spl" and fft_freq_min is not None else freq_min
+            plot_freq_max = fft_freq_max if option_key == "fft_spl" and fft_freq_max is not None else freq_max
             fig = plotter(
                 results=results,
                 mic_index=mic_index,
                 mic_name=mic_name,
-                freq_min=freq_min,
-                freq_max=freq_max,
+                freq_min=plot_freq_min,
+                freq_max=plot_freq_max,
                 condition_order=condition_order,
                 **({"octave_denominator": octave_denominator} if option_key == "third_octave" else {}),
             )
