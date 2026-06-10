@@ -188,6 +188,7 @@ def launch_analysis_gui() -> None:
     }
     control_height = 56
     compact_height = 48
+    scroll_frame_height = 620
     option_font = ("Microsoft YaHei UI", 16)
     compact_option_font = ("Microsoft YaHei UI", 15)
 
@@ -644,6 +645,13 @@ def launch_analysis_gui() -> None:
         for widget in content_frame.winfo_children():
             widget.destroy()
 
+    def reset_content_grid(expand_row: Optional[int]) -> None:
+        content_frame.grid_columnconfigure(0, weight=1)
+        for row in range(12):
+            content_frame.grid_rowconfigure(row, weight=0, minsize=0)
+        if expand_row is not None:
+            content_frame.grid_rowconfigure(expand_row, weight=1)
+
     def make_header(parent: Any, title: str, subtitle: str = "") -> None:
         ctk.CTkLabel(parent, text=title, font=("Microsoft YaHei UI", 24, "bold"), text_color=colors["text"]).grid(row=0, column=0, sticky="w", padx=4, pady=(0, 2))
         if subtitle:
@@ -662,7 +670,7 @@ def launch_analysis_gui() -> None:
 
     def render_data_step() -> None:
         clear_content()
-        content_frame.grid_columnconfigure(0, weight=1)
+        reset_content_grid(3)
         make_header(content_frame, "选择数据", "默认不选择任何数据；请勾选本次要处理的文件或平均组。")
 
         controls = ctk.CTkFrame(content_frame, fg_color=colors["card"], border_color=colors["line"], border_width=1, corner_radius=14)
@@ -693,9 +701,8 @@ def launch_analysis_gui() -> None:
         search_entry = ctk.CTkEntry(controls, textvariable=search_var, height=control_height, fg_color=colors["panel"], border_color=colors["line"], text_color=colors["text"], font=option_font)
         search_entry.grid(row=0, column=3, sticky="ew", padx=8, pady=12)
 
-        table = ctk.CTkScrollableFrame(content_frame, fg_color=colors["panel"], border_color=colors["line"], border_width=1, corner_radius=14)
+        table = ctk.CTkScrollableFrame(content_frame, height=scroll_frame_height, fg_color=colors["panel"], border_color=colors["line"], border_width=1, corner_radius=14)
         table.grid(row=3, column=0, sticky="nsew")
-        content_frame.grid_rowconfigure(3, weight=1)
         for index, weight in enumerate([0, 3, 2, 1, 2, 2, 1]):
             table.grid_columnconfigure(index, weight=weight)
 
@@ -738,10 +745,10 @@ def launch_analysis_gui() -> None:
 
     def render_plot_step() -> None:
         clear_content()
+        reset_content_grid(2)
         make_header(content_frame, "选择图型", "只显示当前工作流可用的图型。")
-        holder = ctk.CTkScrollableFrame(content_frame, fg_color="transparent")
+        holder = ctk.CTkScrollableFrame(content_frame, height=scroll_frame_height, fg_color="transparent")
         holder.grid(row=2, column=0, sticky="nsew")
-        content_frame.grid_rowconfigure(2, weight=1)
         holder.grid_columnconfigure(0, weight=1)
 
         if current_workflow() == WORKFLOW_MICROPHONE:
@@ -771,10 +778,10 @@ def launch_analysis_gui() -> None:
 
     def render_params_step() -> None:
         clear_content()
+        reset_content_grid(2)
         make_header(content_frame, "设置参数", "普通参数优先显示，高级参数保持可调但不干扰常用流程。")
-        holder = ctk.CTkScrollableFrame(content_frame, fg_color="transparent")
+        holder = ctk.CTkScrollableFrame(content_frame, height=scroll_frame_height, fg_color="transparent")
         holder.grid(row=2, column=0, sticky="nsew")
-        content_frame.grid_rowconfigure(2, weight=1)
         holder.grid_columnconfigure((0, 1), weight=1)
 
         if current_workflow() == WORKFLOW_MICROPHONE:
@@ -814,10 +821,10 @@ def launch_analysis_gui() -> None:
 
     def render_style_step() -> None:
         clear_content()
+        reset_content_grid(2)
         make_header(content_frame, "图形样式", "这里只列出本次实际参与出图的曲线或平均组。")
-        holder = ctk.CTkScrollableFrame(content_frame, fg_color="transparent")
+        holder = ctk.CTkScrollableFrame(content_frame, height=scroll_frame_height, fg_color="transparent")
         holder.grid(row=2, column=0, sticky="nsew")
-        content_frame.grid_rowconfigure(2, weight=1)
         holder.grid_columnconfigure((0, 1), weight=1)
 
         ctk.CTkLabel(holder, text="样式预设", text_color=colors["muted"]).grid(row=0, column=0, sticky="w", padx=8, pady=(8, 2))
@@ -877,6 +884,7 @@ def launch_analysis_gui() -> None:
 
     def render_confirm_step() -> None:
         clear_content()
+        reset_content_grid(2)
         make_header(content_frame, "确认并运行", "运行前检查本次任务的关键设置。")
         card = ctk.CTkFrame(content_frame, fg_color=colors["card"], border_color=colors["line"], border_width=1, corner_radius=14)
         card.grid(row=2, column=0, sticky="nsew", pady=(0, 12))
