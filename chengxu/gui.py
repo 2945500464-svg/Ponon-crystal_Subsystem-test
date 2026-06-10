@@ -186,8 +186,10 @@ def launch_analysis_gui() -> None:
         "danger": "#dc2626",
         "success": "#15803d",
     }
-    control_height = 42
-    compact_height = 36
+    control_height = 56
+    compact_height = 48
+    option_font = ("Microsoft YaHei UI", 16)
+    compact_option_font = ("Microsoft YaHei UI", 15)
 
     app = ctk.CTk()
     app.title("AITO 数据处理程序")
@@ -649,7 +651,7 @@ def launch_analysis_gui() -> None:
 
     def add_label_entry(parent: Any, row: int, col: int, label: str, var: Any, width: int = 150, columnspan: int = 1) -> Any:
         ctk.CTkLabel(parent, text=label, text_color=colors["muted"], font=("Microsoft YaHei UI", 12)).grid(row=row, column=col, sticky="w", padx=8, pady=(8, 2))
-        entry = ctk.CTkEntry(parent, textvariable=var, width=width, height=control_height, fg_color=colors["panel"], border_color=colors["line"], text_color=colors["text"], font=("Microsoft YaHei UI", 14))
+        entry = ctk.CTkEntry(parent, textvariable=var, width=width, height=control_height, fg_color=colors["panel"], border_color=colors["line"], text_color=colors["text"], font=option_font)
         entry.grid(row=row + 1, column=col, columnspan=columnspan, sticky="ew", padx=8, pady=(0, 12))
         return entry
 
@@ -665,7 +667,8 @@ def launch_analysis_gui() -> None:
 
         controls = ctk.CTkFrame(content_frame, fg_color=colors["card"], border_color=colors["line"], border_width=1, corner_radius=14)
         controls.grid(row=2, column=0, sticky="ew", pady=(0, 12))
-        controls.grid_columnconfigure(3, weight=1)
+        controls.grid_columnconfigure(1, weight=1)
+        controls.grid_columnconfigure(3, weight=2)
 
         if current_workflow() == WORKFLOW_VIBRATION:
             folders = data_folders()
@@ -677,16 +680,17 @@ def launch_analysis_gui() -> None:
                 variable=folder_var,
                 values=folders or ["无数据"],
                 command=lambda _value: (rebuild_data_items(True), render_current_step(), update_summary()),
-                width=140,
+                width=260,
                 height=control_height,
-                font=("Microsoft YaHei UI", 14),
-            ).grid(row=0, column=1, padx=8, pady=12)
+                font=option_font,
+                dropdown_font=option_font,
+            ).grid(row=0, column=1, sticky="ew", padx=8, pady=12)
         else:
             fixed_text = "固定读取 5.22 与 5.23 同名文件" if current_workflow() == WORKFLOW_PAIRED else "固定读取 5.31 麦克风数据"
             ctk.CTkLabel(controls, text=fixed_text, text_color=colors["text"], font=("Microsoft YaHei UI", 13, "bold")).grid(row=0, column=0, columnspan=2, padx=12, pady=12, sticky="w")
 
         ctk.CTkLabel(controls, text="搜索", text_color=colors["muted"]).grid(row=0, column=2, padx=(20, 8), pady=12)
-        search_entry = ctk.CTkEntry(controls, textvariable=search_var, height=control_height, fg_color=colors["panel"], border_color=colors["line"], text_color=colors["text"], font=("Microsoft YaHei UI", 14))
+        search_entry = ctk.CTkEntry(controls, textvariable=search_var, height=control_height, fg_color=colors["panel"], border_color=colors["line"], text_color=colors["text"], font=option_font)
         search_entry.grid(row=0, column=3, sticky="ew", padx=8, pady=12)
 
         table = ctk.CTkScrollableFrame(content_frame, fg_color=colors["panel"], border_color=colors["line"], border_width=1, corner_radius=14)
@@ -724,7 +728,7 @@ def launch_analysis_gui() -> None:
             cb = ctk.CTkCheckBox(table, text="", variable=data_selected_vars[item.key], command=refresh_after_selection, width=20)
             cb.grid(row=row, column=0, sticky="w", padx=6, pady=5)
             ctk.CTkLabel(table, text=item.display_label, text_color=colors["text"], anchor="w").grid(row=row, column=1, sticky="ew", padx=6, pady=5)
-            ctk.CTkEntry(table, textvariable=data_display_name_vars[item.key], fg_color=bg, border_color=colors["line"], text_color=colors["text"], height=compact_height, font=("Microsoft YaHei UI", 13)).grid(row=row, column=2, sticky="ew", padx=6, pady=6)
+            ctk.CTkEntry(table, textvariable=data_display_name_vars[item.key], fg_color=bg, border_color=colors["line"], text_color=colors["text"], height=compact_height, font=compact_option_font).grid(row=row, column=2, sticky="ew", padx=6, pady=6)
             ctk.CTkLabel(table, text=item.date_label, text_color=colors["muted"]).grid(row=row, column=3, sticky="ew", padx=6, pady=5)
             ctk.CTkLabel(table, text=item.layout_desc, text_color=colors["muted"]).grid(row=row, column=4, sticky="ew", padx=6, pady=5)
             ctk.CTkLabel(table, text=item.input_desc, text_color=colors["muted"]).grid(row=row, column=5, sticky="ew", padx=6, pady=5)
@@ -779,14 +783,14 @@ def launch_analysis_gui() -> None:
             add_label_entry(holder, 2, 0, "总声压级/倍频程下限 / Hz", mic_total_min_var)
             add_label_entry(holder, 2, 1, "总声压级/倍频程上限 / Hz", mic_total_max_var)
             ctk.CTkLabel(holder, text="倍频程类型", text_color=colors["muted"]).grid(row=4, column=0, sticky="w", padx=8, pady=(10, 2))
-            ctk.CTkOptionMenu(holder, variable=mic_octave_var, values=["1/3 倍频程", "1/6 倍频程", "1/12 倍频程", "1/24 倍频程"], command=lambda _v: update_summary(), height=control_height, font=("Microsoft YaHei UI", 14)).grid(row=5, column=0, sticky="ew", padx=8, pady=(0, 12))
+            ctk.CTkOptionMenu(holder, variable=mic_octave_var, values=["1/3 倍频程", "1/6 倍频程", "1/12 倍频程", "1/24 倍频程"], command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=5, column=0, sticky="ew", padx=8, pady=(0, 12))
         else:
             add_label_entry(holder, 0, 0, "频率下限 / Hz", fmin_var)
             add_label_entry(holder, 0, 1, "频率上限 / Hz", fmax_var)
             ctk.CTkLabel(holder, text="输入基准", text_color=colors["muted"]).grid(row=2, column=0, sticky="w", padx=8, pady=(10, 2))
-            ctk.CTkOptionMenu(holder, variable=input_mode_var, values=["自动", "Data第1行", "Data第2行", "Data第3行", "Data第4行"], command=lambda _v: update_summary(), height=control_height, font=("Microsoft YaHei UI", 14)).grid(row=3, column=0, sticky="ew", padx=8, pady=(0, 12))
+            ctk.CTkOptionMenu(holder, variable=input_mode_var, values=["自动", "Data第1行", "Data第2行", "Data第3行", "Data第4行"], command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=3, column=0, sticky="ew", padx=8, pady=(0, 12))
             ctk.CTkLabel(holder, text="处理模式", text_color=colors["muted"]).grid(row=2, column=1, sticky="w", padx=8, pady=(10, 2))
-            ctk.CTkOptionMenu(holder, variable=mode_var, values=list(MODE_DISPLAY_TO_VALUE.keys()), command=lambda _v: update_summary(), height=control_height, font=("Microsoft YaHei UI", 14)).grid(row=3, column=1, sticky="ew", padx=8, pady=(0, 12))
+            ctk.CTkOptionMenu(holder, variable=mode_var, values=list(MODE_DISPLAY_TO_VALUE.keys()), command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=3, column=1, sticky="ew", padx=8, pady=(0, 12))
             add_label_entry(holder, 4, 0, "目标频率分辨率 df / Hz", df_var)
             add_label_entry(holder, 4, 1, "分析时长 / s", duration_var)
             add_label_entry(holder, 6, 0, "起始时间 / s", start_var)
@@ -802,10 +806,10 @@ def launch_analysis_gui() -> None:
         if current_workflow() != WORKFLOW_MICROPHONE:
             ctk.CTkCheckBox(save_card, text="导出 Excel", variable=export_excel_var, command=update_summary, text_color=colors["text"]).grid(row=2, column=0, sticky="w", padx=16, pady=8)
         ctk.CTkLabel(save_card, text="格式", text_color=colors["muted"]).grid(row=3, column=0, sticky="w", padx=16, pady=(12, 2))
-        ctk.CTkOptionMenu(save_card, variable=format_var, values=["png", "pdf", "svg", "jpg"], command=lambda _v: update_summary(), height=control_height, font=("Microsoft YaHei UI", 14)).grid(row=4, column=0, sticky="ew", padx=16, pady=(0, 12))
+        ctk.CTkOptionMenu(save_card, variable=format_var, values=["png", "pdf", "svg", "jpg"], command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=4, column=0, sticky="ew", padx=16, pady=(0, 12))
         add_label_entry(save_card, 3, 1, "DPI", dpi_var)
         ctk.CTkLabel(save_card, text="保存位置", text_color=colors["muted"]).grid(row=5, column=0, sticky="w", padx=16, pady=(12, 2))
-        ctk.CTkEntry(save_card, textvariable=save_dir_var, height=control_height, fg_color=colors["panel"], border_color=colors["line"], text_color=colors["text"], font=("Microsoft YaHei UI", 14)).grid(row=6, column=0, columnspan=2, sticky="ew", padx=16, pady=(0, 12))
+        ctk.CTkEntry(save_card, textvariable=save_dir_var, height=control_height, fg_color=colors["panel"], border_color=colors["line"], text_color=colors["text"], font=option_font).grid(row=6, column=0, columnspan=2, sticky="ew", padx=16, pady=(0, 12))
         ctk.CTkButton(save_card, text="浏览保存位置", command=lambda: choose_save_dir(), fg_color=colors["card"], hover_color=colors["soft"], text_color=colors["text"]).grid(row=7, column=0, columnspan=2, sticky="ew", padx=16, pady=(4, 16))
 
     def render_style_step() -> None:
@@ -817,7 +821,7 @@ def launch_analysis_gui() -> None:
         holder.grid_columnconfigure((0, 1), weight=1)
 
         ctk.CTkLabel(holder, text="样式预设", text_color=colors["muted"]).grid(row=0, column=0, sticky="w", padx=8, pady=(8, 2))
-        ctk.CTkOptionMenu(holder, variable=style_preset_var, values=list(STYLE_PRESETS.keys()), command=lambda _v: apply_style_preset(), height=control_height, font=("Microsoft YaHei UI", 14)).grid(row=1, column=0, sticky="ew", padx=8, pady=(0, 12))
+        ctk.CTkOptionMenu(holder, variable=style_preset_var, values=list(STYLE_PRESETS.keys()), command=lambda _v: apply_style_preset(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=1, column=0, sticky="ew", padx=8, pady=(0, 12))
         add_label_entry(holder, 0, 1, "字体", font_var)
         add_label_entry(holder, 2, 0, "标题字号", title_size_var)
         add_label_entry(holder, 2, 1, "坐标轴字号", label_size_var)
@@ -825,7 +829,7 @@ def launch_analysis_gui() -> None:
         add_label_entry(holder, 4, 1, "图例字号", legend_size_var)
         add_label_entry(holder, 6, 0, "默认线宽", line_width_var)
         ctk.CTkLabel(holder, text="默认线形", text_color=colors["muted"]).grid(row=6, column=1, sticky="w", padx=8, pady=(8, 2))
-        ctk.CTkOptionMenu(holder, variable=line_style_var, values=["实线", "虚线", "点划线", "点线"], height=control_height, font=("Microsoft YaHei UI", 14)).grid(row=7, column=1, sticky="ew", padx=8, pady=(0, 12))
+        ctk.CTkOptionMenu(holder, variable=line_style_var, values=["实线", "虚线", "点划线", "点线"], height=control_height, font=option_font, dropdown_font=option_font).grid(row=7, column=1, sticky="ew", padx=8, pady=(0, 12))
         add_label_entry(holder, 8, 0, "透明度", line_alpha_var)
         add_label_entry(holder, 8, 1, "亮度", brightness_var)
         add_label_entry(holder, 10, 0, "网格透明度", grid_alpha_var)
@@ -841,6 +845,7 @@ def launch_analysis_gui() -> None:
         table.grid(row=18, column=0, columnspan=2, sticky="ew", padx=4, pady=18)
         table.grid_columnconfigure(1, weight=2)
         table.grid_columnconfigure(2, weight=2)
+        table.grid_columnconfigure((4, 5, 6), weight=1)
         headers = ["顺序", "曲线/平均组", "图中显示名", "颜色", "线宽", "线形", "亮度"]
         for col, header in enumerate(headers):
             ctk.CTkLabel(table, text=header, text_color=colors["muted"], font=("Microsoft YaHei UI", 12, "bold")).grid(row=0, column=col, sticky="ew", padx=6, pady=(12, 6))
@@ -859,13 +864,13 @@ def launch_analysis_gui() -> None:
             ctk.CTkButton(order_frame, text="↑", width=34, command=lambda k=key: move_style_key(k, -1), fg_color=colors["card"], hover_color=colors["soft"], text_color=colors["text"]).pack(side="left", padx=2)
             ctk.CTkButton(order_frame, text="↓", width=34, command=lambda k=key: move_style_key(k, 1), fg_color=colors["card"], hover_color=colors["soft"], text_color=colors["text"]).pack(side="left", padx=2)
             ctk.CTkLabel(table, text=key, text_color=colors["text"], anchor="w").grid(row=row, column=1, sticky="ew", padx=6, pady=5)
-            ctk.CTkEntry(table, textvariable=style_display_name_vars[key], fg_color=colors["card"], border_color=colors["line"], text_color=colors["text"], height=compact_height, font=("Microsoft YaHei UI", 13)).grid(row=row, column=2, sticky="ew", padx=6, pady=6)
+            ctk.CTkEntry(table, textvariable=style_display_name_vars[key], fg_color=colors["card"], border_color=colors["line"], text_color=colors["text"], height=compact_height, font=compact_option_font).grid(row=row, column=2, sticky="ew", padx=6, pady=6)
             swatch = ctk.CTkButton(table, text="", width=58, height=compact_height, fg_color=style_color_values[key], hover_color=style_color_values[key], command=lambda k=key: choose_style_color(k))
             swatch.grid(row=row, column=3, sticky="w", padx=6, pady=5)
             style_swatch_widgets[key] = swatch
-            ctk.CTkOptionMenu(table, variable=style_line_width_vars[key], values=LINE_WIDTH_OPTIONS, width=100, height=compact_height).grid(row=row, column=4, sticky="ew", padx=6, pady=6)
-            ctk.CTkOptionMenu(table, variable=style_line_style_vars[key], values=LINE_STYLE_OPTIONS, width=100, height=compact_height).grid(row=row, column=5, sticky="ew", padx=6, pady=6)
-            ctk.CTkOptionMenu(table, variable=style_brightness_vars[key], values=BRIGHTNESS_OPTIONS, width=100, height=compact_height).grid(row=row, column=6, sticky="ew", padx=6, pady=6)
+            ctk.CTkOptionMenu(table, variable=style_line_width_vars[key], values=LINE_WIDTH_OPTIONS, width=140, height=compact_height, font=compact_option_font, dropdown_font=compact_option_font).grid(row=row, column=4, sticky="ew", padx=6, pady=6)
+            ctk.CTkOptionMenu(table, variable=style_line_style_vars[key], values=LINE_STYLE_OPTIONS, width=140, height=compact_height, font=compact_option_font, dropdown_font=compact_option_font).grid(row=row, column=5, sticky="ew", padx=6, pady=6)
+            ctk.CTkOptionMenu(table, variable=style_brightness_vars[key], values=BRIGHTNESS_OPTIONS, width=140, height=compact_height, font=compact_option_font, dropdown_font=compact_option_font).grid(row=row, column=6, sticky="ew", padx=6, pady=6)
 
         if not targets:
             ctk.CTkLabel(table, text="尚未选择数据。请先到“选择数据”步骤勾选文件。", text_color=colors["muted"]).grid(row=1, column=0, columnspan=7, sticky="w", padx=14, pady=16)
