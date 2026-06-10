@@ -104,6 +104,37 @@ def parse_float_mapping(mapping_text: str, min_value: float, max_value: float) -
     return value_map
 
 
+def parse_line_style_mapping(mapping_text: str) -> Dict[str, str]:
+    """Parse style mapping lines like plan1=--."""
+    aliases = {
+        "solid": "-",
+        "实线": "-",
+        "-": "-",
+        "dashed": "--",
+        "虚线": "--",
+        "--": "--",
+        "dashdot": "-.",
+        "点划线": "-.",
+        "-.": "-.",
+        "dotted": ":",
+        "点线": ":",
+        ":": ":",
+    }
+    value_map: Dict[str, str] = {}
+    for raw_line in str(mapping_text or "").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = [part.strip() for part in line.split("=", 1)]
+        style = aliases.get(value.lower(), aliases.get(value))
+        if not key or not style:
+            print(f"  warning: 线形配置无效，已忽略: {line}")
+            continue
+        value_map[key] = style
+        value_map[key.lower()] = style
+    return value_map
+
+
 def _adjust_color_brightness(color: Any, brightness: float) -> Any:
     if color is None:
         return color
@@ -135,6 +166,24 @@ def _lookup_style_color(label: str, color_map: Dict[str, str]) -> Optional[str]:
 
 
 def _lookup_style_float(label: str, value_map: Dict[str, float]) -> Optional[float]:
+    label_text = str(label)
+    candidates = [
+        label_text,
+        label_text.lower(),
+        normalize_condition_label(label_text),
+        normalize_condition_label(label_text).lower(),
+        get_display_condition_name(label_text),
+        get_display_condition_name(normalize_condition_label(label_text)),
+    ]
+    for candidate in candidates:
+        if candidate in value_map:
+            return value_map[candidate]
+        if str(candidate).lower() in value_map:
+            return value_map[str(candidate).lower()]
+    return None
+
+
+def _lookup_style_line_style(label: str, value_map: Dict[str, str]) -> Optional[str]:
     label_text = str(label)
     candidates = [
         label_text,
@@ -243,6 +292,10 @@ def normalize_plot_style(plot_style: Optional[Dict[str, Any]]) -> Dict[str, Any]
         brightness_map = dict(raw["brightness_map"])
     else:
         brightness_map = parse_float_mapping(str(raw.get("brightness_mapping") or ""), 0.1, 3.0)
+    if isinstance(raw.get("line_style_map"), dict):
+        line_style_map = dict(raw["line_style_map"])
+    else:
+        line_style_map = parse_line_style_mapping(str(raw.get("line_style_mapping") or ""))
     requested_font_family = str(raw.get("font_family") or "Microsoft YaHei UI").strip() or "Microsoft YaHei UI"
     resolved_font_family, font_family_list = resolve_plot_font_family(requested_font_family)
     raw_condition_order = raw.get("condition_order") or []
@@ -261,9 +314,11 @@ def normalize_plot_style(plot_style: Optional[Dict[str, Any]]) -> Dict[str, Any]
         "line_width": _safe_style_float(raw.get("line_width"), 1.6, 0.1, 10.0),
         "line_alpha": _safe_style_float(raw.get("line_alpha"), 1.0, 0.05, 1.0),
         "brightness": _safe_style_float(raw.get("brightness"), 1.0, 0.1, 3.0),
+        "line_style": str(raw.get("line_style") or "-"),
         "grid_alpha": _safe_style_float(raw.get("grid_alpha"), 0.45, 0.0, 1.0),
         "figure_width": _safe_style_float(width_text, 0.0, 0.0, 40.0) if width_text else 0.0,
         "figure_height": _safe_style_float(height_text, 0.0, 0.0, 30.0) if height_text else 0.0,
+        "title_override": str(raw.get("title_override") or "").strip(),
         "title_prefix": str(raw.get("title_prefix") or ""),
         "title_suffix": str(raw.get("title_suffix") or ""),
         "xlabel_override": str(raw.get("xlabel_override") or "").strip(),
@@ -272,6 +327,7 @@ def normalize_plot_style(plot_style: Optional[Dict[str, Any]]) -> Dict[str, Any]
         "display_name_map": display_name_map,
         "line_width_map": line_width_map,
         "brightness_map": brightness_map,
+        "line_style_map": line_style_map,
         "condition_order": condition_order,
     }
 
@@ -291,14 +347,18 @@ def apply_plot_style(fig: plt.Figure, plot_style: Optional[Dict[str, Any]]) -> N
     display_name_map: Dict[str, str] = style["display_name_map"]
     line_width_map: Dict[str, float] = style["line_width_map"]
     brightness_map: Dict[str, float] = style["brightness_map"]
+    line_style_map: Dict[str, str] = style["line_style_map"]
     brightness = style["brightness"]
     line_alpha = style["line_alpha"]
     line_width = style["line_width"]
+    default_line_style = style["line_style"] or "-"
 
     for ax in fig.axes:
         is_colorbar = str(ax.get_label()).startswith("<colorbar")
         title = ax.get_title()
-        if title and not is_colorbar:
+        if not is_colorbar and style["title_override"]:
+            ax.set_title(style["title_override"], fontsize=style["title_fontsize"], fontfamily=style["font_family"])
+        elif title and not is_colorbar:
             ax.set_title(f"{style['title_prefix']}{title}{style['title_suffix']}", fontsize=style["title_fontsize"], fontfamily=style["font_family"])
         elif title:
             ax.title.set_fontsize(style["title_fontsize"])
@@ -343,8 +403,10 @@ def apply_plot_style(fig: plt.Figure, plot_style: Optional[Dict[str, Any]]) -> N
                 line.set_label(mapped_label)
             line_brightness = _lookup_style_float(label, brightness_map)
             line_width_value = _lookup_style_float(label, line_width_map)
+            line_style_value = _lookup_style_line_style(label, line_style_map)
             line.set_color(_adjust_color_brightness(line.get_color(), line_brightness if line_brightness is not None else brightness))
             line.set_linewidth(line_width_value if line_width_value is not None else line_width)
+            line.set_linestyle(line_style_value if line_style_value is not None else default_line_style)
             line.set_alpha(line_alpha)
 
         xtick_labels = [tick.get_text() for tick in ax.get_xticklabels()]
@@ -401,6 +463,9 @@ def apply_plot_style(fig: plt.Figure, plot_style: Optional[Dict[str, Any]]) -> N
                 if hasattr(legend_handle, "set_linewidth"):
                     legend_width_value = _lookup_style_float(original_legend_label, line_width_map)
                     legend_handle.set_linewidth(legend_width_value if legend_width_value is not None else line_width)
+                if hasattr(legend_handle, "set_linestyle"):
+                    legend_style_value = _lookup_style_line_style(original_legend_label, line_style_map)
+                    legend_handle.set_linestyle(legend_style_value if legend_style_value is not None else default_line_style)
                 if hasattr(legend_handle, "set_alpha"):
                     legend_handle.set_alpha(line_alpha)
                 mapped_legend_label = _lookup_style_display_name(original_legend_label, display_name_map)
