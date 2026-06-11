@@ -10,6 +10,7 @@ from .exporters import save_selected_outputs
 from .microphone_processing import analyze_microphone_files, save_microphone_outputs
 from .plotting import build_average_results_between_dates
 from .utils import normalize_condition_label
+from .vehicle_processing import analyze_vehicle_files, save_vehicle_outputs, vehicle_condition_prefix
 
 
 MODE_DISPLAY_TO_VALUE = {
@@ -78,6 +79,29 @@ class MicrophoneTaskConfig:
     mic_indices: List[int]
     octave_denominator: int
     average_by_prefix: bool
+
+
+@dataclass
+class Vehicle611TaskConfig:
+    mat_files: List[Path]
+    plot_options: Dict[str, bool]
+    save_dir: Path
+    image_format: str
+    dpi_value: int
+    show_after: bool
+    save_figures: bool
+    plot_style: Dict[str, Any]
+    freq_min: float
+    freq_max: float
+    desired_df: float
+    duration_sec: float
+    mode: str
+    start_sec: float
+    trim_start: float
+    trim_end: float
+    mic_indices: List[int]
+    octave_denominator: int
+    average_by_condition: bool
 
 
 @dataclass
@@ -284,3 +308,66 @@ class MicrophoneTask:
             octave_denominator=cfg.octave_denominator,
         )
         return TaskRunResult(saved_paths=saved_paths, result_count=len(results), message="麦克风声学数据处理完成。")
+
+
+class Vehicle611Task:
+    def __init__(self, config: Vehicle611TaskConfig) -> None:
+        self.config = config
+
+    def validate(self) -> None:
+        cfg = self.config
+        if not cfg.mat_files:
+            raise ValueError("请至少选择一个 6.11 实车 .mat 数据文件。")
+        if _selected_plot_count(cfg.plot_options) == 0:
+            raise ValueError("请至少选择一种 6.11 实车出图类型。")
+        if not cfg.mic_indices:
+            raise ValueError("请至少选择一个麦克风位置。")
+        _require_positive_range(cfg.freq_min, cfg.freq_max, "6.11 分析频率范围")
+        if cfg.desired_df <= 0:
+            raise ValueError("目标频率分辨率必须大于 0。")
+        if cfg.duration_sec <= 0:
+            raise ValueError("分析时长必须大于 0。")
+        if cfg.dpi_value <= 0:
+            raise ValueError("DPI 必须大于 0。")
+        if cfg.octave_denominator not in {3, 6, 12, 24}:
+            raise ValueError("倍频程类型只支持 1/3、1/6、1/12、1/24。")
+        condition_names = [
+            vehicle_condition_prefix(path.stem) if cfg.average_by_condition else path.stem
+            for path in cfg.mat_files
+        ]
+        if cfg.plot_options.get("improvement_scatter") and not _has_condition(condition_names, "no-load"):
+            raise ValueError("频段改善散点图需要选择 no-load 基准数据。")
+
+    def run(self) -> TaskRunResult:
+        self.validate()
+        cfg = self.config
+        results = analyze_vehicle_files(
+            mat_files=cfg.mat_files,
+            freq_min=cfg.freq_min,
+            freq_max=cfg.freq_max,
+            desired_df=cfg.desired_df,
+            duration_sec=cfg.duration_sec,
+            mode=cfg.mode,
+            start_sec=cfg.start_sec,
+            trim_start=cfg.trim_start,
+            trim_end=cfg.trim_end,
+            octave_denominator=cfg.octave_denominator,
+            average_by_condition=cfg.average_by_condition,
+        )
+        if not results:
+            raise ValueError("没有成功处理任何 6.11 实车数据文件，请查看终端 warning 信息。")
+        saved_paths = save_vehicle_outputs(
+            results=results,
+            plot_options=cfg.plot_options,
+            save_dir=cfg.save_dir,
+            image_format=cfg.image_format,
+            dpi_value=cfg.dpi_value,
+            show_after=cfg.show_after,
+            save_figures_flag=cfg.save_figures,
+            plot_style=cfg.plot_style,
+            freq_min=cfg.freq_min,
+            freq_max=cfg.freq_max,
+            mic_indices=cfg.mic_indices,
+            octave_denominator=cfg.octave_denominator,
+        )
+        return TaskRunResult(saved_paths=saved_paths, result_count=len(results), message="6.11 实车声振数据处理完成。")

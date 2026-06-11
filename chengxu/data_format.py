@@ -19,6 +19,8 @@ def _parse_side(value: Any) -> Optional[str]:
 
 def _parse_layout_key(value: Any) -> Optional[str]:
     text = str(value or "").strip()
+    if "17" in text or "实车" in text or "半轴" in text:
+        return "vehicle17"
     if "10个" in text or "10" in text:
         return "new10"
     if "9个" in text or "9" in text:
@@ -93,6 +95,8 @@ def infer_layout_key(date_tag: str, n_channels: Optional[int] = None) -> str:
     if layout in CHANNEL_LAYOUTS:
         return layout
     if n_channels is not None:
+        if n_channels >= 17:
+            return "vehicle17"
         if n_channels >= 10:
             return "new10"
         if n_channels == 9:

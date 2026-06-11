@@ -30,17 +30,21 @@ from .gui_tasks import (
     MicrophoneTaskConfig,
     PairedAverageTask,
     PairedAverageTaskConfig,
+    Vehicle611Task,
+    Vehicle611TaskConfig,
     VibrationTask,
     VibrationTaskConfig,
 )
 from .microphone_processing import MICROPHONE_FREQ_MAX, MICROPHONE_FREQ_MIN
 from .utils import get_condition_color, normalize_condition_label
+from .vehicle_processing import VEHICLE_611_FOLDER, VEHICLE_PLOT_GROUPS, vehicle_condition_prefix
 
 
 WORKFLOW_VIBRATION = "副车架振动数据处理"
 WORKFLOW_PAIRED = "5.22 + 5.23 同名平均"
 WORKFLOW_MICROPHONE = "麦克风声学数据处理"
-WORKFLOWS = [WORKFLOW_VIBRATION, WORKFLOW_PAIRED, WORKFLOW_MICROPHONE]
+WORKFLOW_VEHICLE_611 = "6.11 实车声振数据处理"
+WORKFLOWS = [WORKFLOW_VIBRATION, WORKFLOW_PAIRED, WORKFLOW_MICROPHONE, WORKFLOW_VEHICLE_611]
 
 STEPS = ["选择数据", "选择图型", "设置参数", "图形样式", "确认运行"]
 
@@ -242,6 +246,7 @@ def launch_analysis_gui() -> None:
     mic_octave_var = ctk.StringVar(value="1/3 倍频程")
     mic_average_var = ctk.BooleanVar(value=False)
     mic_position_vars = {0: ctk.BooleanVar(value=True), 1: ctk.BooleanVar(value=True), 2: ctk.BooleanVar(value=True)}
+    vehicle_average_var = ctk.BooleanVar(value=False)
 
     structure_plot_vars = {
         key: ctk.BooleanVar(value=(key == "four_average"))
@@ -257,6 +262,11 @@ def launch_analysis_gui() -> None:
         "fft_spl": ctk.BooleanVar(value=True),
         "total_spl": ctk.BooleanVar(value=True),
         "third_octave": ctk.BooleanVar(value=True),
+    }
+    vehicle_plot_vars = {
+        key: ctk.BooleanVar(value=(key in {"mic_fft_spl", "mic_total_spl", "subframe_avg_psd", "road_normalized_mic", "road_normalized_subframe", "coherence"}))
+        for group in VEHICLE_PLOT_GROUPS.values()
+        for _label, key in group
     }
 
     # Style variables.
@@ -359,6 +369,8 @@ def launch_analysis_gui() -> None:
             return paired_plot_vars
         if current_workflow() == WORKFLOW_MICROPHONE:
             return mic_plot_vars
+        if current_workflow() == WORKFLOW_VEHICLE_611:
+            return vehicle_plot_vars
         return structure_plot_vars
 
     def selected_data_items() -> List[DataItem]:
@@ -421,6 +433,19 @@ def launch_analysis_gui() -> None:
                     status="待处理",
                     stem_for_style=path.stem,
                 )
+        elif workflow == WORKFLOW_VEHICLE_611:
+            vehicle_dir = RAW_DATA_DIR / VEHICLE_611_FOLDER
+            for path in sorted(vehicle_dir.glob("*.mat")) if vehicle_dir.is_dir() else []:
+                data_items[path.name] = DataItem(
+                    key=path.name,
+                    display_label=path.name,
+                    date_label=VEHICLE_611_FOLDER,
+                    paths=[path],
+                    layout_desc="6.11实车17通道",
+                    input_desc="3麦克风 + 2个三向半轴 + 8个副车架加速度",
+                    status="待处理",
+                    stem_for_style=path.stem,
+                )
         else:
             folder = folder_var.get() or (folders[0] if folders else "")
             if folder and folder_var.get() != folder:
@@ -456,6 +481,9 @@ def launch_analysis_gui() -> None:
                 stem = item.paths[0].stem
                 parts = stem.rsplit("_", 1)
                 key = parts[0] if len(parts) == 2 and parts[1].isdigit() else stem
+                default_name = key
+            elif workflow == WORKFLOW_VEHICLE_611 and bool(vehicle_average_var.get()):
+                key = vehicle_condition_prefix(item.paths[0].stem)
                 default_name = key
             elif workflow == WORKFLOW_PAIRED:
                 key = item.stem_for_style
@@ -539,6 +567,9 @@ def launch_analysis_gui() -> None:
         if current_workflow() == WORKFLOW_MICROPHONE:
             names = {key: label for label, key in MICROPHONE_PLOTS}
             return [names[key] for key, var in mic_plot_vars.items() if bool(var.get())]
+        if current_workflow() == WORKFLOW_VEHICLE_611:
+            names = {key: label for group in VEHICLE_PLOT_GROUPS.values() for label, key in group}
+            return [names[key] for key, var in vehicle_plot_vars.items() if bool(var.get())]
         names = {key: label for group in STRUCTURE_PLOT_GROUPS.values() for label, key in group}
         return [names[key] for key, var in current_plot_vars().items() if bool(var.get())]
 
@@ -626,6 +657,31 @@ def launch_analysis_gui() -> None:
             )
         )
 
+    def build_vehicle_task() -> Vehicle611Task:
+        return Vehicle611Task(
+            Vehicle611TaskConfig(
+                mat_files=selected_data_paths(),
+                plot_options=plot_options_for_current_workflow(),
+                save_dir=Path(save_dir_var.get()).expanduser(),
+                image_format=format_var.get().lower(),
+                dpi_value=as_int(dpi_var, "DPI"),
+                show_after=bool(show_figures_var.get()),
+                save_figures=bool(save_figures_var.get()),
+                plot_style=build_plot_style(),
+                freq_min=as_float(fmin_var, "频率下限"),
+                freq_max=as_float(fmax_var, "频率上限"),
+                desired_df=as_float(df_var, "目标频率分辨率"),
+                duration_sec=as_float(duration_var, "分析时长"),
+                mode=MODE_DISPLAY_TO_VALUE.get(mode_var.get(), "single_segment"),
+                start_sec=as_float(start_var, "起始时间"),
+                trim_start=as_float(trim_start_var, "前裁时间"),
+                trim_end=as_float(trim_end_var, "后裁时间"),
+                mic_indices=selected_microphone_indices(),
+                octave_denominator=microphone_octave_denominator(),
+                average_by_condition=bool(vehicle_average_var.get()),
+            )
+        )
+
     def update_summary() -> None:
         selected_count = len(selected_data_items())
         plots = "、".join(selected_plot_names()) or "未选图型"
@@ -635,6 +691,11 @@ def launch_analysis_gui() -> None:
             pos_text = "、".join(positions[idx] for idx in selected_microphone_indices()) or "未选麦克风位置"
             freq_text = f"FFT {mic_fft_min_var.get()}-{mic_fft_max_var.get()} Hz；总声压级/倍频程 {mic_total_min_var.get()}-{mic_total_max_var.get()} Hz"
             summary_var.set(f"{current_workflow()} | 已选 {selected_count} 个 | {plots} | {pos_text} | {freq_text} | {save_state}")
+        elif current_workflow() == WORKFLOW_VEHICLE_611:
+            positions = ["前排麦克风", "中排麦克风", "后排麦克风"]
+            pos_text = "、".join(positions[idx] for idx in selected_microphone_indices()) or "未选麦克风位置"
+            avg_text = "同工况平均" if bool(vehicle_average_var.get()) else "单独出图"
+            summary_var.set(f"{current_workflow()} | 已选 {selected_count} 个 | {plots} | {pos_text} | {avg_text} | {fmin_var.get()}-{fmax_var.get()} Hz | {save_state}")
         elif current_workflow() == WORKFLOW_PAIRED:
             summary_var.set(f"{current_workflow()} | 已选 {selected_count} 组同名文件 | {plots} | {fmin_var.get()}-{fmax_var.get()} Hz | {save_state}")
         else:
@@ -694,7 +755,12 @@ def launch_analysis_gui() -> None:
                 dropdown_font=option_font,
             ).grid(row=0, column=1, sticky="ew", padx=8, pady=12)
         else:
-            fixed_text = "固定读取 5.22 与 5.23 同名文件" if current_workflow() == WORKFLOW_PAIRED else "固定读取 5.31 麦克风数据"
+            if current_workflow() == WORKFLOW_PAIRED:
+                fixed_text = "固定读取 5.22 与 5.23 同名文件"
+            elif current_workflow() == WORKFLOW_VEHICLE_611:
+                fixed_text = "固定读取 6.11 实车声振数据"
+            else:
+                fixed_text = "固定读取 5.31 麦克风数据"
             ctk.CTkLabel(controls, text=fixed_text, text_color=colors["text"], font=("Microsoft YaHei UI", 13, "bold")).grid(row=0, column=0, columnspan=2, padx=12, pady=12, sticky="w")
 
         ctk.CTkLabel(controls, text="搜索", text_color=colors["muted"]).grid(row=0, column=2, padx=(20, 8), pady=12)
@@ -764,6 +830,28 @@ def launch_analysis_gui() -> None:
             ctk.CTkLabel(pos, text="麦克风位置", font=("Microsoft YaHei UI", 16, "bold"), text_color=colors["text"]).grid(row=0, column=0, sticky="w", padx=16, pady=(14, 8))
             for idx, name in enumerate(["主驾驶", "中排", "后排"]):
                 ctk.CTkCheckBox(pos, text=name, variable=mic_position_vars[idx], command=update_summary, text_color=colors["text"]).grid(row=1, column=idx, sticky="w", padx=18, pady=(0, 14))
+        elif current_workflow() == WORKFLOW_VEHICLE_611:
+            vars_to_use = current_plot_vars()
+            row = 0
+            option_card = ctk.CTkFrame(holder, fg_color=colors["card"], border_color=colors["line"], border_width=1, corner_radius=14)
+            option_card.grid(row=row, column=0, sticky="ew", pady=8)
+            option_card.grid_columnconfigure(0, weight=1)
+            ctk.CTkLabel(option_card, text="6.11实车处理选项", font=("Microsoft YaHei UI", 16, "bold"), text_color=colors["text"]).grid(row=0, column=0, sticky="w", padx=16, pady=(14, 8))
+            ctk.CTkCheckBox(option_card, text="按同工况名取平均后出图（例如 no-load_1/no-load_2 -> no-load）", variable=vehicle_average_var, command=lambda: (update_summary(), render_current_step()), text_color=colors["text"]).grid(row=1, column=0, sticky="w", padx=18, pady=8)
+            mic_pos = ctk.CTkFrame(option_card, fg_color="transparent")
+            mic_pos.grid(row=2, column=0, sticky="ew", padx=12, pady=(4, 14))
+            ctk.CTkLabel(mic_pos, text="麦克风位置", text_color=colors["muted"]).grid(row=0, column=0, sticky="w", padx=6, pady=4)
+            for idx, name in enumerate(["前排", "中排", "后排"], start=1):
+                ctk.CTkCheckBox(mic_pos, text=name, variable=mic_position_vars[idx - 1], command=update_summary, text_color=colors["text"]).grid(row=0, column=idx, sticky="w", padx=14, pady=4)
+            row += 1
+            for group_name, items in VEHICLE_PLOT_GROUPS.items():
+                card = ctk.CTkFrame(holder, fg_color=colors["card"], border_color=colors["line"], border_width=1, corner_radius=14)
+                card.grid(row=row, column=0, sticky="ew", pady=8)
+                card.grid_columnconfigure(0, weight=1)
+                ctk.CTkLabel(card, text=group_name, font=("Microsoft YaHei UI", 16, "bold"), text_color=colors["text"]).grid(row=0, column=0, sticky="w", padx=16, pady=(14, 8))
+                for idx, (label, key) in enumerate(items, start=1):
+                    ctk.CTkCheckBox(card, text=label, variable=vars_to_use[key], command=update_summary, text_color=colors["text"]).grid(row=idx, column=0, sticky="w", padx=18, pady=7)
+                row += 1
         else:
             vars_to_use = current_plot_vars()
             row = 0
@@ -791,6 +879,18 @@ def launch_analysis_gui() -> None:
             add_label_entry(holder, 2, 1, "总声压级/倍频程上限 / Hz", mic_total_max_var)
             ctk.CTkLabel(holder, text="倍频程类型", text_color=colors["muted"]).grid(row=4, column=0, sticky="w", padx=8, pady=(10, 2))
             ctk.CTkOptionMenu(holder, variable=mic_octave_var, values=["1/3 倍频程", "1/6 倍频程", "1/12 倍频程", "1/24 倍频程"], command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=5, column=0, sticky="ew", padx=8, pady=(0, 12))
+        elif current_workflow() == WORKFLOW_VEHICLE_611:
+            add_label_entry(holder, 0, 0, "分析频率下限 / Hz", fmin_var)
+            add_label_entry(holder, 0, 1, "分析频率上限 / Hz", fmax_var)
+            ctk.CTkLabel(holder, text="处理模式", text_color=colors["muted"]).grid(row=2, column=0, sticky="w", padx=8, pady=(10, 2))
+            ctk.CTkOptionMenu(holder, variable=mode_var, values=list(MODE_DISPLAY_TO_VALUE.keys()), command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=3, column=0, sticky="ew", padx=8, pady=(0, 12))
+            ctk.CTkLabel(holder, text="倍频程类型", text_color=colors["muted"]).grid(row=2, column=1, sticky="w", padx=8, pady=(10, 2))
+            ctk.CTkOptionMenu(holder, variable=mic_octave_var, values=["1/3 倍频程", "1/6 倍频程", "1/12 倍频程", "1/24 倍频程"], command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=3, column=1, sticky="ew", padx=8, pady=(0, 12))
+            add_label_entry(holder, 4, 0, "目标频率分辨率 df / Hz", df_var)
+            add_label_entry(holder, 4, 1, "分析时长 / s", duration_var)
+            add_label_entry(holder, 6, 0, "起始时间 / s", start_var)
+            add_label_entry(holder, 6, 1, "前裁时间 / s", trim_start_var)
+            add_label_entry(holder, 8, 0, "后裁时间 / s", trim_end_var)
         else:
             add_label_entry(holder, 0, 0, "频率下限 / Hz", fmin_var)
             add_label_entry(holder, 0, 1, "频率上限 / Hz", fmax_var)
@@ -810,7 +910,7 @@ def launch_analysis_gui() -> None:
         ctk.CTkLabel(save_card, text="输出设置", font=("Microsoft YaHei UI", 16, "bold"), text_color=colors["text"]).grid(row=0, column=0, columnspan=2, sticky="w", padx=16, pady=(14, 8))
         ctk.CTkCheckBox(save_card, text="出图后显示", variable=show_figures_var, command=update_summary, text_color=colors["text"]).grid(row=1, column=0, sticky="w", padx=16, pady=8)
         ctk.CTkCheckBox(save_card, text="保存本次生成图像", variable=save_figures_var, command=update_summary, text_color=colors["text"]).grid(row=1, column=1, sticky="w", padx=16, pady=8)
-        if current_workflow() != WORKFLOW_MICROPHONE:
+        if current_workflow() not in {WORKFLOW_MICROPHONE, WORKFLOW_VEHICLE_611}:
             ctk.CTkCheckBox(save_card, text="导出 Excel", variable=export_excel_var, command=update_summary, text_color=colors["text"]).grid(row=2, column=0, sticky="w", padx=16, pady=8)
         ctk.CTkLabel(save_card, text="格式", text_color=colors["muted"]).grid(row=3, column=0, sticky="w", padx=16, pady=(12, 2))
         ctk.CTkOptionMenu(save_card, variable=format_var, values=["png", "pdf", "svg", "jpg"], command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=4, column=0, sticky="ew", padx=16, pady=(0, 12))
@@ -905,6 +1005,15 @@ def launch_analysis_gui() -> None:
                 ("倍频程", mic_octave_var.get()),
                 ("麦克风位置", "、".join(["主驾驶", "中排", "后排"][idx] for idx in selected_microphone_indices()) or "未选择"),
             ])
+        elif current_workflow() == WORKFLOW_VEHICLE_611:
+            rows.extend([
+                ("分析频段", f"{fmin_var.get()}-{fmax_var.get()} Hz"),
+                ("处理模式", mode_var.get()),
+                ("同工况平均", "开启" if vehicle_average_var.get() else "关闭"),
+                ("倍频程", mic_octave_var.get()),
+                ("麦克风位置", "、".join(["前排麦克风", "中排麦克风", "后排麦克风"][idx] for idx in selected_microphone_indices()) or "未选择"),
+                ("通道结构", "3麦克风 + 2个三向半轴 + 8个副车架单向加速度，共17行"),
+            ])
         else:
             rows.extend([
                 ("频段", f"{fmin_var.get()}-{fmax_var.get()} Hz"),
@@ -991,6 +1100,8 @@ def launch_analysis_gui() -> None:
             app.update_idletasks()
             if current_workflow() == WORKFLOW_MICROPHONE:
                 result = build_microphone_task().run()
+            elif current_workflow() == WORKFLOW_VEHICLE_611:
+                result = build_vehicle_task().run()
             elif current_workflow() == WORKFLOW_PAIRED:
                 result = build_paired_task().run()
             else:

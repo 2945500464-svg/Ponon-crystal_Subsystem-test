@@ -129,6 +129,26 @@ NEW_10_CHANNEL_NAMES = [
     "右中",
 ]
 
+VEHICLE_17_CHANNEL_NAMES = [
+    "前排麦克风",
+    "中排麦克风",
+    "后排麦克风",
+    "左半轴X",
+    "左半轴Y",
+    "左半轴Z",
+    "右半轴X",
+    "右半轴Y",
+    "右半轴Z",
+    "左前",
+    "左中",
+    "左后",
+    "右前",
+    "右中",
+    "右后",
+    "左动力吸振器",
+    "右动力吸振器",
+]
+
 CHANNEL_LAYOUTS: Dict[str, Dict[str, Any]] = {
     "old8": {
         "names": OLD_8_CHANNEL_NAMES,
@@ -154,6 +174,14 @@ CHANNEL_LAYOUTS: Dict[str, Dict[str, Any]] = {
         "force_index": 2,
         "exciter_index": 3,
     },
+    "vehicle17": {
+        "names": VEHICLE_17_CHANNEL_NAMES,
+        "output_indices": [9, 10, 11, 12, 13, 14, 15, 16],
+        "four_indices": [9, 11, 12, 14],
+        "six_indices": [9, 10, 11, 12, 13, 14],
+        "force_index": None,
+        "exciter_index": None,
+    },
 }
 
 DEFAULT_DATE_DATA_FORMATS: Dict[str, Dict[str, str]] = {
@@ -164,6 +192,7 @@ DEFAULT_DATE_DATA_FORMATS: Dict[str, Dict[str, str]] = {
     "5.12": {"side": "right", "layout": "new10"},
     "5.22": {"side": "right", "layout": "new10"},
     "5.23": {"side": "left", "layout": "new10"},
+    "6.11": {"side": "none", "layout": "vehicle17"},
 }
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
