@@ -9,6 +9,8 @@ __pycache__/
 # Raw test data and generated outputs are local only.
 Raw_data/*
 !Raw_data/.gitkeep
+!Raw_data/*.xlsx
+Raw_data/**/*.mat
 output/*
 !output/.gitkeep
 
