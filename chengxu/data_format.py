@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from .config import CHANNEL_LAYOUTS, DEFAULT_DATE_DATA_FORMATS, RAW_DATA_DIR
@@ -19,6 +20,8 @@ def _parse_side(value: Any) -> Optional[str]:
 
 def _parse_layout_key(value: Any) -> Optional[str]:
     text = str(value or "").strip()
+    if "力传感器" in text and "左中" in text and "右中" in text and "9" in text:
+        return "force_input_mid9"
     if "17" in text or "实车" in text or "半轴" in text:
         return "vehicle17"
     if "10个" in text or "10" in text:
@@ -27,6 +30,25 @@ def _parse_layout_key(value: Any) -> Optional[str]:
         return "force9"
     if "8个" in text or "8" in text:
         return "old8"
+    return None
+
+
+def _parse_input_index(value: Any) -> Optional[int]:
+    """从数据格式表的通道描述中识别输入基准行号。"""
+    text = str(value or "").strip()
+    if not text:
+        return None
+
+    explicit_match = re.search(r"Data\s*第?\s*(\d+)\s*行", text, flags=re.IGNORECASE)
+    if explicit_match:
+        return max(int(explicit_match.group(1)) - 1, 0)
+
+    compact = re.sub(r"\s+", "", text)
+    for match in re.finditer(r"(\d+)[：:、，,;；-]*([^0-9]+)", compact):
+        row_number = int(match.group(1))
+        channel_text = match.group(2)
+        if "左输入" in channel_text or "右输入" in channel_text or "输入加速度" in channel_text or "激振器加速度" in channel_text:
+            return max(row_number - 1, 0)
     return None
 
 
@@ -70,7 +92,9 @@ def load_data_format_config() -> Dict[str, Dict[str, str]]:
                 continue
 
             side = _parse_side(row[side_idx] if side_idx < len(row) else None)
-            layout = _parse_layout_key(row[sensor_idx] if sensor_idx < len(row) else None)
+            sensor_value = row[sensor_idx] if sensor_idx < len(row) else None
+            layout = _parse_layout_key(sensor_value)
+            input_index = _parse_input_index(sensor_value)
             if layout is not None:
                 last_layout = layout
 
@@ -81,6 +105,8 @@ def load_data_format_config() -> Dict[str, Dict[str, str]]:
                 current["layout"] = layout
             elif "layout" not in current and last_layout is not None:
                 current["layout"] = last_layout
+            if input_index is not None:
+                current["input_index"] = str(input_index)
             config[folder] = current
     except Exception as exc:
         print(f"  warning: 数据格式表读取失败，使用内置日期结构配置。原因: {exc}")
@@ -111,7 +137,13 @@ def get_channel_layout(mat_file: Path, n_channels: Optional[int] = None) -> Dict
 
 def get_input_channel_index_for_file(mat_file: Path) -> int:
     """Automatic input reference: left exciter -> Data row 1, right exciter -> Data row 2."""
-    side = load_data_format_config().get(get_date_tag(mat_file), {}).get("side")
+    date_config = load_data_format_config().get(get_date_tag(mat_file), {})
+    if "input_index" in date_config:
+        try:
+            return int(date_config["input_index"])
+        except (TypeError, ValueError):
+            pass
+    side = date_config.get("side")
     return 1 if side == "right" else 0
 
 
