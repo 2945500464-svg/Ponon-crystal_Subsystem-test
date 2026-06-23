@@ -183,6 +183,10 @@ def get_heatmap_sensor_indices(layout: Dict[str, Any]) -> List[int]:
 def resolve_gui_input_index(mat_file: Path, input_mode: str) -> int:
     explicit_map = {
         "自动": -1,
+        "Data第1行（力传感器）": 0,
+        "Data第2行（左输入）": 1,
+        "第一行力传感器": 0,
+        "第二行左输入": 1,
         "Data第1行": 0,
         "Data第2行": 1,
         "Data第3行": 2,

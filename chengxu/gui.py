@@ -895,7 +895,23 @@ def launch_analysis_gui() -> None:
             add_label_entry(holder, 0, 0, "频率下限 / Hz", fmin_var)
             add_label_entry(holder, 0, 1, "频率上限 / Hz", fmax_var)
             ctk.CTkLabel(holder, text="输入基准", text_color=colors["muted"]).grid(row=2, column=0, sticky="w", padx=8, pady=(10, 2))
-            ctk.CTkOptionMenu(holder, variable=input_mode_var, values=["自动", "Data第1行", "Data第2行", "Data第3行", "Data第4行"], command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=3, column=0, sticky="ew", padx=8, pady=(0, 12))
+            ctk.CTkOptionMenu(
+                holder,
+                variable=input_mode_var,
+                values=[
+                    "自动",
+                    "Data第1行（力传感器）",
+                    "Data第2行（左输入）",
+                    "Data第1行",
+                    "Data第2行",
+                    "Data第3行",
+                    "Data第4行",
+                ],
+                command=lambda _v: update_summary(),
+                height=control_height,
+                font=option_font,
+                dropdown_font=option_font,
+            ).grid(row=3, column=0, sticky="ew", padx=8, pady=(0, 12))
             ctk.CTkLabel(holder, text="处理模式", text_color=colors["muted"]).grid(row=2, column=1, sticky="w", padx=8, pady=(10, 2))
             ctk.CTkOptionMenu(holder, variable=mode_var, values=list(MODE_DISPLAY_TO_VALUE.keys()), command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=3, column=1, sticky="ew", padx=8, pady=(0, 12))
             add_label_entry(holder, 4, 0, "目标频率分辨率 df / Hz", df_var)
