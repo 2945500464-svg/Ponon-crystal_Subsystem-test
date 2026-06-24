@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .plot_style import apply_plot_style, normalize_plot_style
-from .plotting import plot_band_total_level_bar, plot_damping_rate_bar_for_results, plot_force_acceleration_frf_comparison, plot_force_psd_comparison, plot_input_accel_psd_comparison, plot_normalized_psd_ratio_heatmap, plot_transfer_loss_comparison, plot_weighted_transfer_rate_comparison
+from .plotting import plot_acceleration_fft_comparison, plot_band_total_level_bar, plot_damping_rate_bar_for_results, plot_force_acceleration_frf_comparison, plot_force_psd_comparison, plot_input_accel_psd_comparison, plot_normalized_psd_ratio_heatmap, plot_transfer_loss_comparison, plot_weighted_transfer_rate_comparison, resolve_condition_order
 from .utils import get_condition_plot_order, normalize_condition_label, sanitize_filename, sanitize_sheet_name
 
 def export_to_excel(
@@ -126,6 +126,25 @@ def save_selected_outputs(
                 path = export_to_excel(all_results, output_index, output_name, save_dir)
                 if path is not None:
                     saved_paths.append(path)
+
+    if plot_options.get("accel_fft"):
+        sensor_names: List[str] = []
+        seen_sensor_names = set()
+        for condition_name in resolve_condition_order(all_results, condition_order):
+            result = all_results[condition_name]
+            for sensor_name in result.get("accel_fft_names", result.get("output_names", [])):
+                sensor_name = str(sensor_name)
+                if sensor_name and sensor_name not in seen_sensor_names:
+                    sensor_names.append(sensor_name)
+                    seen_sensor_names.add(sensor_name)
+
+        for sensor_name in sensor_names:
+            fig = plot_acceleration_fft_comparison(all_results, sensor_name, freq_min, freq_max, condition_order=condition_order)
+            if fig is not None:
+                apply_plot_style(fig, active_style)
+                if save_figures_flag:
+                    saved_paths.append(save_figure_as(fig, save_dir, f"1Hz加速度FFT_{sensor_name}", image_format, dpi_value))
+                generated_figures.append(fig)
 
     if plot_options.get("four_average"):
         fig, _ = plot_weighted_transfer_rate_comparison(all_results, four_names, [1.0] * len(four_names), freq_min, freq_max, False, save_dir, condition_order=condition_order)

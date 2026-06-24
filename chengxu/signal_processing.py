@@ -344,6 +344,61 @@ def compute_channel_psd(
     return freqs[freq_mask], mean_psd[:, freq_mask]
 
 
+def compute_channel_fft_amplitude_1hz(
+    data: np.ndarray,
+    sample_rate: float,
+    freq_min: float,
+    freq_max: float,
+    channel_indices: List[int],
+) -> Tuple[np.ndarray, np.ndarray]:
+    """计算指定加速度通道的 1 Hz 单边 FFT 幅值谱。
+
+    处理口径：按 1 s 非重叠片段分段，每段去均值、加 Hann 窗、做单边 FFT；
+    先做单边幅值和 Hann 相干增益修正，再对各段在线性幅值域平均。
+    """
+    if data.ndim != 2:
+        raise ValueError("data 必须是二维数组：通道数 x 样本数")
+    if not channel_indices:
+        raise ValueError("channel_indices 不能为空")
+    if data.shape[0] <= max(channel_indices):
+        raise ValueError("通道数不足，无法计算指定通道 FFT")
+    if sample_rate <= 0:
+        raise ValueError("fs 必须大于 0")
+
+    segment_samples = max(1, int(round(sample_rate)))
+    nfft = segment_samples
+    n_samples = data.shape[1]
+    n_segments = n_samples // segment_samples
+
+    if n_segments > 0:
+        usable = data[:, : n_segments * segment_samples]
+        segments = usable.reshape(data.shape[0], n_segments, segment_samples).transpose(1, 0, 2)
+    else:
+        padded = np.zeros((data.shape[0], segment_samples), dtype=float)
+        padded[:, :n_samples] = data
+        segments = padded[np.newaxis, :, :]
+
+    window = np.hanning(segment_samples)
+    coherent_gain = max(float(np.sum(window)), np.finfo(float).tiny)
+    freqs = np.fft.rfftfreq(nfft, d=1.0 / sample_rate)
+    amplitude_list: List[np.ndarray] = []
+
+    for segment in segments:
+        selected = segment[channel_indices, :]
+        selected = selected - np.mean(selected, axis=1, keepdims=True)
+        spectrum = np.fft.rfft(selected * window[np.newaxis, :], n=nfft, axis=1)
+        amplitude = 2.0 * np.abs(spectrum) / coherent_gain
+        if amplitude.shape[1] > 0:
+            amplitude[:, 0] *= 0.5
+        if nfft % 2 == 0 and amplitude.shape[1] > 1:
+            amplitude[:, -1] *= 0.5
+        amplitude_list.append(amplitude)
+
+    mean_amplitude = np.mean(np.stack(amplitude_list, axis=0), axis=0)
+    freq_mask = (freqs >= freq_min) & (freqs <= freq_max)
+    return freqs[freq_mask], mean_amplitude[:, freq_mask]
+
+
 def compute_normalized_psd_ratio_average(
     segments: np.ndarray,
     sample_rate: float,

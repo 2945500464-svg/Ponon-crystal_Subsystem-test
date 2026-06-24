@@ -239,6 +239,52 @@ def plot_input_accel_psd_comparison(
     return fig
 
 
+def plot_acceleration_fft_comparison(
+    all_results: Dict[str, Dict[str, Any]],
+    sensor_name: str,
+    freq_min: float,
+    freq_max: float,
+    condition_order: Optional[List[str]] = None,
+) -> Optional[plt.Figure]:
+    """绘制同一加速度测点在不同工况下的 1 Hz FFT 幅值对比图。"""
+    fig, ax = plt.subplots(figsize=(9.5, 5.5))
+    has_data = False
+
+    for condition_name in resolve_condition_order(all_results, condition_order):
+        result = all_results[condition_name]
+        fft_names = [str(name) for name in result.get("accel_fft_names", result.get("output_names", []))]
+        fft_data = result.get("accel_fft_amplitude")
+        fft_freqs = result.get("accel_fft_freqs")
+        if fft_data is None or fft_freqs is None or sensor_name not in fft_names:
+            continue
+
+        row_index = fft_names.index(sensor_name)
+        if row_index >= fft_data.shape[0]:
+            continue
+
+        ax.plot(
+            fft_freqs,
+            fft_data[row_index, :],
+            linewidth=1.4,
+            label=get_display_condition_name(condition_name),
+            color=get_condition_color(condition_name),
+        )
+        has_data = True
+
+    if not has_data:
+        plt.close(fig)
+        return None
+
+    ax.set_xlim(freq_min, freq_max)
+    ax.set_xlabel("频率 / Hz")
+    ax.set_ylabel("加速度 FFT 幅值 / (m/s²)")
+    ax.set_title(f"{sensor_name} 1 Hz加速度FFT幅值对比")
+    ax.grid(True, which="both", linestyle="--", linewidth=0.6, alpha=0.45)
+    ax.legend(loc="best", frameon=True, fontsize=legend_fontsize)
+    fig.tight_layout()
+    return fig
+
+
 def plot_transfer_loss_comparison(
     all_results: Dict[str, Dict[str, Any]],
     output_index: int,
