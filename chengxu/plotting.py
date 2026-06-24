@@ -246,7 +246,7 @@ def plot_acceleration_fft_comparison(
     freq_max: float,
     condition_order: Optional[List[str]] = None,
 ) -> Optional[plt.Figure]:
-    """绘制同一加速度测点在不同工况下的 1 Hz FFT 幅值对比图。"""
+    """绘制同一加速度测点在不同工况下的 FFT 幅值对比图。"""
     fig, ax = plt.subplots(figsize=(9.5, 5.5))
     has_data = False
 
@@ -278,7 +278,7 @@ def plot_acceleration_fft_comparison(
     ax.set_xlim(freq_min, freq_max)
     ax.set_xlabel("频率 / Hz")
     ax.set_ylabel("加速度 FFT 幅值 / (m/s²)")
-    ax.set_title(f"{sensor_name} 1 Hz加速度FFT幅值对比")
+    ax.set_title(f"{sensor_name} 加速度FFT幅值对比")
     ax.grid(True, which="both", linestyle="--", linewidth=0.6, alpha=0.45)
     ax.legend(loc="best", frameon=True, fontsize=legend_fontsize)
     fig.tight_layout()

@@ -51,7 +51,7 @@ STEPS = ["选择数据", "选择图型", "设置参数", "图形样式", "确认
 STRUCTURE_PLOT_GROUPS = {
     "基础曲线": [
         ("单输出传递率", "single_outputs"),
-        ("加速度 FFT（1 Hz）", "accel_fft"),
+        ("加速度 FFT", "accel_fft"),
         ("四点平均传递率", "four_average"),
         ("六点平均传递率", "six_average"),
         ("输入 PSD", "input_psd"),

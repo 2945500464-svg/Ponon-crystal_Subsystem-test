@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from .config import RAW_DATA_DIR, fs
 from .data_format import get_gui_channel_config, get_heatmap_sensor_indices, resolve_gui_input_index
 from .mat_io import load_mat_file
-from .signal_processing import compute_accel_force_frf, compute_channel_fft_amplitude_1hz, compute_channel_psd, compute_force_psd, compute_normalized_psd_ratio_average, compute_transfer_loss, get_analysis_segments, trim_data_edges
+from .signal_processing import compute_accel_force_frf, compute_channel_fft_amplitude, compute_channel_psd, compute_force_psd, compute_normalized_psd_ratio_average, compute_transfer_loss, get_analysis_segments, trim_data_edges
 
 def analyze_selected_files(
     mat_files: List[Path],
@@ -81,9 +81,10 @@ def analyze_selected_files(
             }
 
             try:
-                fft_freqs, fft_amplitude = compute_channel_fft_amplitude_1hz(
-                    data=trimmed_data,
+                fft_freqs, fft_amplitude = compute_channel_fft_amplitude(
+                    segments=segments,
                     sample_rate=fs,
+                    desired_df=desired_df,
                     freq_min=freq_min,
                     freq_max=freq_max,
                     channel_indices=output_indices,

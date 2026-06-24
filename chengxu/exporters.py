@@ -143,7 +143,7 @@ def save_selected_outputs(
             if fig is not None:
                 apply_plot_style(fig, active_style)
                 if save_figures_flag:
-                    saved_paths.append(save_figure_as(fig, save_dir, f"1Hz加速度FFT_{sensor_name}", image_format, dpi_value))
+                    saved_paths.append(save_figure_as(fig, save_dir, f"加速度FFT_{sensor_name}", image_format, dpi_value))
                 generated_figures.append(fig)
 
     if plot_options.get("four_average"):
