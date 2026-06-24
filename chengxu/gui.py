@@ -902,7 +902,9 @@ def launch_analysis_gui() -> None:
                 values=[
                     "自动",
                     "Data第1行（力传感器）",
+                    "Data第2行（输入）",
                     "Data第2行（左输入）",
+                    "Data第2行（右输入）",
                     "Data第1行",
                     "Data第2行",
                     "Data第3行",

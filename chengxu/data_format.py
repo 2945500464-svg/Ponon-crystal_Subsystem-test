@@ -20,6 +20,8 @@ def _parse_side(value: Any) -> Optional[str]:
 
 def _parse_layout_key(value: Any) -> Optional[str]:
     text = str(value or "").strip()
+    if "力传感器" in text and "右输入" in text and "声子晶体" in text and "10" in text:
+        return "force_right_input_pc10"
     if "力传感器" in text and "左中" in text and "右中" in text and "9" in text:
         return "force_input_mid9"
     if "17" in text or "实车" in text or "半轴" in text:
@@ -185,8 +187,11 @@ def resolve_gui_input_index(mat_file: Path, input_mode: str) -> int:
         "自动": -1,
         "Data第1行（力传感器）": 0,
         "Data第2行（左输入）": 1,
+        "Data第2行（右输入）": 1,
+        "Data第2行（输入）": 1,
         "第一行力传感器": 0,
         "第二行左输入": 1,
+        "第二行右输入": 1,
         "Data第1行": 0,
         "Data第2行": 1,
         "Data第3行": 2,
