@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .plot_style import apply_plot_style, normalize_plot_style
-from .plotting import plot_acceleration_fft_comparison, plot_band_total_level_bar, plot_damping_rate_bar_for_results, plot_force_acceleration_frf_comparison, plot_force_psd_comparison, plot_input_accel_psd_comparison, plot_normalized_psd_ratio_heatmap, plot_transfer_loss_comparison, plot_weighted_transfer_rate_comparison, resolve_condition_order
+from .plotting import plot_acceleration_fft_comparison, plot_band_total_level_bar, plot_damping_rate_bar_for_results, plot_force_acceleration_frf_comparison, plot_force_fft_comparison, plot_force_psd_comparison, plot_input_accel_psd_comparison, plot_normalized_psd_ratio_heatmap, plot_six_sensor_psd_comparison, plot_transfer_loss_comparison, plot_weighted_transfer_rate_comparison, resolve_condition_order
 from .utils import get_condition_plot_order, normalize_condition_label, sanitize_filename, sanitize_sheet_name
 
 def export_to_excel(
@@ -146,6 +146,25 @@ def save_selected_outputs(
                     saved_paths.append(save_figure_as(fig, save_dir, f"加速度FFT_{sensor_name}", image_format, dpi_value))
                 generated_figures.append(fig)
 
+    if plot_options.get("six_sensor_psd"):
+        sensor_names = []
+        seen_sensor_names = set()
+        for condition_name in resolve_condition_order(all_results, condition_order):
+            result = all_results[condition_name]
+            for sensor_name in result.get("six_sensor_psd_names", six_names):
+                sensor_name = str(sensor_name)
+                if sensor_name and sensor_name not in seen_sensor_names:
+                    sensor_names.append(sensor_name)
+                    seen_sensor_names.add(sensor_name)
+
+        for sensor_name in sensor_names:
+            fig = plot_six_sensor_psd_comparison(all_results, sensor_name, freq_min, freq_max, condition_order=condition_order)
+            if fig is not None:
+                apply_plot_style(fig, active_style)
+                if save_figures_flag:
+                    saved_paths.append(save_figure_as(fig, save_dir, f"六点PSD_{sensor_name}", image_format, dpi_value))
+                generated_figures.append(fig)
+
     if plot_options.get("four_average"):
         fig, _ = plot_weighted_transfer_rate_comparison(all_results, four_names, [1.0] * len(four_names), freq_min, freq_max, False, save_dir, condition_order=condition_order)
         if fig is not None:
@@ -184,6 +203,14 @@ def save_selected_outputs(
             apply_plot_style(fig, active_style)
             if save_figures_flag:
                 saved_paths.append(save_figure_as(fig, save_dir, "输入力PSD对比", image_format, dpi_value))
+            generated_figures.append(fig)
+
+    if plot_options.get("force_fft"):
+        fig = plot_force_fft_comparison(all_results, freq_min, freq_max, condition_order=condition_order)
+        if fig is not None:
+            apply_plot_style(fig, active_style)
+            if save_figures_flag:
+                saved_paths.append(save_figure_as(fig, save_dir, "力传感器FFT对比", image_format, dpi_value))
             generated_figures.append(fig)
 
     if plot_options.get("frf"):

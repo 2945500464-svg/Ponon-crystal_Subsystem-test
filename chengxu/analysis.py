@@ -112,6 +112,21 @@ def analyze_selected_files(
             force_index = layout.get("force_index")
             if force_index is not None and force_index < n_channels:
                 try:
+                    force_fft_freqs, force_fft_amplitude = compute_channel_fft_amplitude(
+                        segments=segments,
+                        sample_rate=fs,
+                        desired_df=desired_df,
+                        freq_min=freq_min,
+                        freq_max=freq_max,
+                        channel_indices=[force_index],
+                    )
+                    result["force_fft_freqs"] = force_fft_freqs
+                    result["force_fft_amplitude"] = force_fft_amplitude[0, :]
+                    result["force_fft_name"] = names[force_index] if force_index < len(names) else f"Ch_{force_index + 1}"
+                except Exception as exc:
+                    print(f"  warning: 输入力FFT计算失败: {exc}")
+
+                try:
                     force_psd_freqs, force_psd = compute_force_psd(
                         segments=segments,
                         sample_rate=fs,
@@ -143,6 +158,22 @@ def analyze_selected_files(
             normalized_indices = get_heatmap_sensor_indices(layout)
             auto_stat_names = [names[idx] for idx in normalized_indices if idx < len(names)]
             auto_stat_mode = "six" if ("左中" in auto_stat_names and "右中" in auto_stat_names) else "four"
+            try:
+                six_sensor_indices = [idx for idx in layout["six_indices"] if idx < n_channels]
+                six_psd_freqs, six_psd = compute_channel_psd(
+                    segments=segments,
+                    sample_rate=fs,
+                    desired_df=desired_df,
+                    freq_min=freq_min,
+                    freq_max=freq_max,
+                    channel_indices=six_sensor_indices,
+                )
+                result["six_sensor_psd_freqs"] = six_psd_freqs
+                result["six_sensor_psd"] = six_psd
+                result["six_sensor_psd_names"] = [names[idx] if idx < len(names) else f"Ch_{idx + 1}" for idx in six_sensor_indices]
+            except Exception as exc:
+                print(f"  warning: 六点PSD计算失败: {exc}")
+
             try:
                 norm_freqs, norm_ratio = compute_normalized_psd_ratio_average(
                     segments=segments,

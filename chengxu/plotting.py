@@ -200,6 +200,44 @@ def plot_force_psd_comparison(
     return fig
 
 
+def plot_force_fft_comparison(
+    all_results: Dict[str, Dict[str, Any]],
+    freq_min: float,
+    freq_max: float,
+    condition_order: Optional[List[str]] = None,
+) -> Optional[plt.Figure]:
+    """绘制所有工况力传感器 FFT 幅值对比图。"""
+    fig, ax = plt.subplots(figsize=(9.5, 5.5))
+    has_data = False
+
+    for condition_name in resolve_condition_order(all_results, condition_order):
+        result = all_results[condition_name]
+        if "force_fft_freqs" not in result or "force_fft_amplitude" not in result:
+            continue
+
+        ax.plot(
+            result["force_fft_freqs"],
+            result["force_fft_amplitude"],
+            linewidth=1.4,
+            label=get_display_condition_name(condition_name),
+            color=get_condition_color(condition_name),
+        )
+        has_data = True
+
+    if not has_data:
+        plt.close(fig)
+        return None
+
+    ax.set_xlim(freq_min, freq_max)
+    ax.set_xlabel("频率 / Hz")
+    ax.set_ylabel("力传感器 FFT 幅值 / N")
+    ax.set_title("力传感器 FFT 幅值对比")
+    ax.grid(True, which="both", linestyle="--", linewidth=0.6, alpha=0.45)
+    ax.legend(loc="best", frameon=True, fontsize=legend_fontsize)
+    fig.tight_layout()
+    return fig
+
+
 def plot_input_accel_psd_comparison(
     all_results: Dict[str, Dict[str, Any]],
     freq_min: float,
@@ -232,6 +270,53 @@ def plot_input_accel_psd_comparison(
     ax.set_xlabel("频率 / Hz")
     ax.set_ylabel("激振器加速度 PSD / (m/s²)²·Hz⁻¹")
     ax.set_title("激振器加速度 PSD 对比")
+    ax.set_yscale("log")
+    ax.grid(True, which="both", linestyle="--", linewidth=0.6, alpha=0.45)
+    ax.legend(loc="best", frameon=True, fontsize=legend_fontsize)
+    fig.tight_layout()
+    return fig
+
+
+def plot_six_sensor_psd_comparison(
+    all_results: Dict[str, Dict[str, Any]],
+    sensor_name: str,
+    freq_min: float,
+    freq_max: float,
+    condition_order: Optional[List[str]] = None,
+) -> Optional[plt.Figure]:
+    """绘制副车架六点中同一测点在不同工况下的 PSD 对比图。"""
+    fig, ax = plt.subplots(figsize=(9.5, 5.5))
+    has_data = False
+
+    for condition_name in resolve_condition_order(all_results, condition_order):
+        result = all_results[condition_name]
+        psd_names = [str(name) for name in result.get("six_sensor_psd_names", [])]
+        psd_data = result.get("six_sensor_psd")
+        psd_freqs = result.get("six_sensor_psd_freqs")
+        if psd_data is None or psd_freqs is None or sensor_name not in psd_names:
+            continue
+
+        row_index = psd_names.index(sensor_name)
+        if row_index >= psd_data.shape[0]:
+            continue
+
+        ax.plot(
+            psd_freqs,
+            psd_data[row_index, :],
+            linewidth=1.4,
+            label=get_display_condition_name(condition_name),
+            color=get_condition_color(condition_name),
+        )
+        has_data = True
+
+    if not has_data:
+        plt.close(fig)
+        return None
+
+    ax.set_xlim(freq_min, freq_max)
+    ax.set_xlabel("频率 / Hz")
+    ax.set_ylabel("加速度 PSD / (m/s²)²·Hz⁻¹")
+    ax.set_title(f"{sensor_name} 加速度PSD对比")
     ax.set_yscale("log")
     ax.grid(True, which="both", linestyle="--", linewidth=0.6, alpha=0.45)
     ax.legend(loc="best", frameon=True, fontsize=legend_fontsize)

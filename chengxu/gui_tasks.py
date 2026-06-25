@@ -72,6 +72,7 @@ class MicrophoneTaskConfig:
     show_after: bool
     save_figures: bool
     plot_style: Dict[str, Any]
+    desired_df: float
     fft_freq_min: float
     fft_freq_max: float
     total_freq_min: float
@@ -274,6 +275,8 @@ class MicrophoneTask:
             raise ValueError("请至少选择一个麦克风位置。")
         _require_positive_range(cfg.fft_freq_min, cfg.fft_freq_max, "FFT 声压级频率范围")
         _require_positive_range(cfg.total_freq_min, cfg.total_freq_max, "总声压级/倍频程频率范围")
+        if cfg.desired_df <= 0:
+            raise ValueError("目标频率分辨率必须大于 0。")
         if cfg.dpi_value <= 0:
             raise ValueError("DPI 必须大于 0。")
         if cfg.octave_denominator not in {3, 6, 12, 24}:
@@ -284,6 +287,7 @@ class MicrophoneTask:
         cfg = self.config
         results = analyze_microphone_files(
             mat_files=cfg.mat_files,
+            desired_df=cfg.desired_df,
             freq_min=cfg.total_freq_min,
             freq_max=cfg.total_freq_max,
             average_by_prefix=cfg.average_by_prefix,
@@ -306,6 +310,7 @@ class MicrophoneTask:
             fft_freq_max=cfg.fft_freq_max,
             mic_indices=cfg.mic_indices,
             octave_denominator=cfg.octave_denominator,
+            fft_band_width_hz=None,
         )
         return TaskRunResult(saved_paths=saved_paths, result_count=len(results), message="麦克风声学数据处理完成。")
 

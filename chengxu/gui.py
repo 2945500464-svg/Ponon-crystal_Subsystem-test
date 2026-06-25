@@ -52,10 +52,12 @@ STRUCTURE_PLOT_GROUPS = {
     "基础曲线": [
         ("单输出传递率", "single_outputs"),
         ("加速度 FFT", "accel_fft"),
+        ("六点各自 PSD", "six_sensor_psd"),
         ("四点平均传递率", "four_average"),
         ("六点平均传递率", "six_average"),
         ("输入 PSD", "input_psd"),
         ("输入力 PSD", "force_psd"),
+        ("力传感器 FFT", "force_fft"),
         ("输入点 FRF", "frf"),
     ],
     "评价图": [
@@ -648,6 +650,7 @@ def launch_analysis_gui() -> None:
                 show_after=bool(show_figures_var.get()),
                 save_figures=bool(save_figures_var.get()),
                 plot_style=build_plot_style(),
+                desired_df=as_float(df_var, "目标频率分辨率"),
                 fft_freq_min=as_float(mic_fft_min_var, "FFT 频率下限"),
                 fft_freq_max=as_float(mic_fft_max_var, "FFT 频率上限"),
                 total_freq_min=as_float(mic_total_min_var, "总声压级频率下限"),
@@ -880,6 +883,7 @@ def launch_analysis_gui() -> None:
             add_label_entry(holder, 2, 1, "总声压级/倍频程上限 / Hz", mic_total_max_var)
             ctk.CTkLabel(holder, text="倍频程类型", text_color=colors["muted"]).grid(row=4, column=0, sticky="w", padx=8, pady=(10, 2))
             ctk.CTkOptionMenu(holder, variable=mic_octave_var, values=["1/3 倍频程", "1/6 倍频程", "1/12 倍频程", "1/24 倍频程"], command=lambda _v: update_summary(), height=control_height, font=option_font, dropdown_font=option_font).grid(row=5, column=0, sticky="ew", padx=8, pady=(0, 12))
+            add_label_entry(holder, 4, 1, "目标频率分辨率 df / Hz", df_var)
         elif current_workflow() == WORKFLOW_VEHICLE_611:
             add_label_entry(holder, 0, 0, "分析频率下限 / Hz", fmin_var)
             add_label_entry(holder, 0, 1, "分析频率上限 / Hz", fmax_var)
